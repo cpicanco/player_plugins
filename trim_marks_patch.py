@@ -8,6 +8,9 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
+# modified version of:
+# https://github.com/pupil-labs/pupil/blob/ffc548a0764cb26fc4459ff129c9c216f1fafc8d/pupil_src/player/trim_marks.py
+
 from OpenGL.GL import *
 from pyglui.cygl.utils import RGBA,draw_points,draw_polyline
 from glfw import glfwGetWindowSize,glfwGetCurrentContext,glfwGetCursorPos,GLFW_RELEASE,GLFW_PRESS,glfwGetFramebufferSize
@@ -15,6 +18,7 @@ from trim_marks import Trim_Marks
 
 import logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class Trim_Marks_Extended(Trim_Marks):
     """
@@ -22,18 +26,11 @@ class Trim_Marks_Extended(Trim_Marks):
     """
     def __init__(self, g_pool, focus=0, sections=[]):
         super(Trim_Marks_Extended, self).__init__(g_pool)
-        print "alive plugins before:" 
-        print g_pool.plugins
         for p in g_pool.plugins:
             if p.class_name == 'Trim_Marks':
-                print dir(p)
-                # '[info] plugin successfully destroyed' would be good
                 p.alive = False
                 break
-        g_pool.trim_marks = self #attach self for ease of access by others.
-
-        print "alive plugins after:" 
-        print g_pool.plugins
+        g_pool.trim_marks = self # attach self for ease of access by others.
 
         # focused section
         self._focus = focus
@@ -128,7 +125,6 @@ class Trim_Marks_Extended(Trim_Marks):
                 self.drag_out = False
                 self.drag_in = False
 
-
             # would be great to expand the click area horizontally for big sections
             for s in self.sections:
                 if s is not self.sections[self.focus]:
@@ -174,3 +170,5 @@ class Trim_Marks_Extended(Trim_Marks):
         glPopMatrix()
         glMatrixMode(GL_MODELVIEW)
         glPopMatrix()
+  
+del Trim_Marks
