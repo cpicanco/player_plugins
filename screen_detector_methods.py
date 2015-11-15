@@ -14,7 +14,7 @@ from math import sqrt
 import cv2
 import numpy as np
 
-from square_marker_detector import get_close_markers
+from square_marker_detect import get_close_markers
 from quad_segmentation import sortCorners
 
 # hacked detect_markers

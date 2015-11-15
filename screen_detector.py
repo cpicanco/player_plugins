@@ -8,7 +8,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-# modified version of Marker_Detector
+# modified version of marker_detector
 
 import cv2
 import numpy as np
@@ -21,6 +21,7 @@ from glfw import glfwGetCurrentContext, glfwGetCursorPos, glfwGetWindowSize
 import logging
 logger = logging.getLogger(__name__)
 
+from marker_detector import Marker_Detector
 from square_marker_detect import draw_markers,m_marker_to_screen
 from screen_detector_methods import detect_markers_robust, detect_screens
 from reference_surface import Reference_Surface

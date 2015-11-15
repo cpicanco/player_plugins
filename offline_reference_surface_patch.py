@@ -30,12 +30,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
     """
     def __init__(self,g_pool,name="unnamed",saved_definition=None):
-        super(Offline_Reference_Surface_Patch, self).__init__(name,saved_definition)
-        for p in g_pool.plugins:
-            if p.class_name = 'Offline_Reference_Surface':
-                p.alive = False
-                break
-
+        super(Offline_Reference_Surface_Extended, self).__init__(name,saved_definition)
         self.g_pool = g_pool
         self.cache = None
         self.gaze_on_srf = [] # points on surface for realtime feedback display
@@ -44,12 +39,12 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.heatmap_blur_gradation = .2
 
         self.gaze_cloud = None
+        self.gaze_cloud_texture = None
 
         self.output_data = {}
 
     def gl_display_gaze_cloud(self):
         if self.gaze_cloud_texture and self.detected:
-
             # cv uses 3x3 gl uses 4x4 tranformation matricies
             m = cvmat_to_glmat(self.m_to_screen)
 
@@ -143,11 +138,15 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         all_gaze = np.array(all_gaze)
         all_gaze *= [x_size, y_size]
 
-        hist, xedge, yedge = np.histogram2d(all_gaze[:, 0], all_gaze[:, 1],
-                                            bins = (x_bin, y_bin),
-                                            # range = [[0, x_size], [0, y_size]],
-                                            normed = False,
-                                            weights = None)
+        try:
+            hist, xedge, yedge = np.histogram2d(all_gaze[:, 0], all_gaze[:, 1],
+                                                bins = (x_bin, y_bin),
+                                                # range = [[0, x_size], [0, y_size]],
+                                                normed = False,
+                                                weights = None)
+        except (ValueError) as e:
+            logger.error("Error:%s" %(e))
+            return
 
         # numpy.histogram2d does not follow the Cartesian convention
         hist = np.rot90(hist)
@@ -189,7 +188,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             self.heatmap = cv2.resize(src=self.heatmap, dsize=dsize, fx=0, fy=0, interpolation=inter)
 
         # texturing
-        self.heatmap_texture = create_named_texture(self.heatmap.shape)
+        self.heatmap_texture = create_named_texture()
         update_named_texture(self.heatmap_texture, self.heatmap)
 
     def generate_gaze_cloud(self,section):
@@ -240,7 +239,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         self.gaze_cloud = img
 
-        self.gaze_cloud_texture = create_named_texture(self.gaze_cloud.shape)
+        self.gaze_cloud_texture = create_named_texture()
         update_named_texture(self.gaze_cloud_texture, self.gaze_cloud)
 
 

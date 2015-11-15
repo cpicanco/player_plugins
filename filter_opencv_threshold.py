@@ -9,7 +9,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-from gl_utils import draw_gl_points_norm
+from gl_utils import *
 from player_methods import transparent_circle
 from plugin import Plugin
 import numpy as np
