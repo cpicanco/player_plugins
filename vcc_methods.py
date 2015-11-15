@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+'''
+  Pupil Player Third Party Plugins by cpicanco
+  Copyright (C) 2015 Rafael Picanço.
+
+  Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+# modified version of circle_detector and some hard copies of some methods.
+
 import itertools
 import numpy as np
 import cv2
@@ -317,6 +329,7 @@ def PolygonTestEx(contours, pt, contours_counter = 0, counter_code = ''):
     return contours_counter, counter_code
 
 # http://math.stackexchange.com/questions/211645/what-is-the-number-of-all-possible-relations-intersections-of-n-sets
+# also many thanks to Veedrac
 # http://codereview.stackexchange.com/questions/75524/tracking-eye-movements/75550#75550
 # chars = '+-', base = 2
 def get_codes(chars, base):

@@ -8,12 +8,11 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-(*)~----------------------------------------------------------------------------------
+
 # Hack from Pupil (v0.3.7.4 .. v0.4x):
 # - plugin.py
 # - vis_circle.py
 # - circle_detector.py
-
 
 from player_methods import transparent_circle
 from plugin import Plugin

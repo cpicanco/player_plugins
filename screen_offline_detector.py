@@ -8,6 +8,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
+# modified version of offline_marker_detector
 
 import sys, os,platform
 import cv2
@@ -40,13 +41,14 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-from marker_detector import Marker_Detector
-from square_marker_detect import detect_markers_robust, draw_markers,m_marker_to_screen
-from offline_reference_surface import Offline_Reference_Surface
+from screen_detector import Screen_Detector
+from offline_marker_detector import Offline_Marker_Detector
+from square_marker_detect import draw_markers,m_marker_to_screen
+from offline_reference_surface_patch import Offline_Reference_Surface_Extended
 from math import sqrt
 
 
-class Offline_Marker_Detector(Marker_Detector):
+class Offline_Screen_Detector(Screen_Detector, Offline_Marker_Detector):
     """
     Special version of marker detector for use with videofile source.
     It uses a seperate process to search all frames in the world.avi file for markers.
@@ -56,8 +58,8 @@ class Offline_Marker_Detector(Marker_Detector):
     See marker_tracker.py for more info on this marker tracker.
     """
 
-    def __init__(self,g_pool,mode="Show Markers and Frames"):
-        super(Offline_Marker_Detector, self).__init__(g_pool)
+    def __init__(self,g_pool,mode="Show Screen"):
+        super(Offline_Screen_Detector, self).__init__(g_pool)
         self.order = .2
 
 
@@ -71,10 +73,10 @@ class Offline_Marker_Detector(Marker_Detector):
         self.surface_definitions = Persistent_Dict(os.path.join(g_pool.rec_dir,'surface_definitions'))
         if self.surface_definitions.get('offline_square_marker_surfaces',[]) != []:
             logger.debug("Found ref surfaces defined or copied in previous session.")
-            self.surfaces = [Offline_Reference_Surface(self.g_pool,saved_definition=d) for d in self.surface_definitions.get('offline_square_marker_surfaces',[]) if isinstance(d,dict)]
+            self.surfaces = [Offline_Reference_Surface_Extended(self.g_pool,saved_definition=d) for d in self.surface_definitions.get('offline_square_marker_surfaces',[]) if isinstance(d,dict)]
         elif self.surface_definitions.get('realtime_square_marker_surfaces',[]) != []:
             logger.debug("Did not find ref surfaces def created or used by the user in player from earlier session. Loading surfaces defined during capture.")
-            self.surfaces = [Offline_Reference_Surface(self.g_pool,saved_definition=d) for d in self.surface_definitions.get('realtime_square_marker_surfaces',[]) if isinstance(d,dict)]
+            self.surfaces = [Offline_Reference_Surface_Extended(self.g_pool,saved_definition=d) for d in self.surface_definitions.get('realtime_square_marker_surfaces',[]) if isinstance(d,dict)]
         else:
             logger.debug("No surface defs found. Please define using GUI.")
             self.surfaces = []
@@ -105,7 +107,7 @@ class Offline_Marker_Detector(Marker_Detector):
 
 
     def init_gui(self):
-        self.menu = ui.Scrolling_Menu('Offline Marker Tracker')
+        self.menu = ui.Scrolling_Menu('Offline Screen Tracker')
         self.g_pool.gui.append(self.menu)
 
 
@@ -214,8 +216,8 @@ class Offline_Marker_Detector(Marker_Detector):
 
 
     def add_surface(self,_):
-        self.surfaces.append(Offline_Reference_Surface(self.g_pool))
-        self.surfaces.append(Offline_Reference_Surface(self.g_pool))
+        self.surfaces.append(Offline_Reference_Surface_Extended(self.g_pool))
+        self.surfaces.append(Offline_Reference_Surface_Extended(self.g_pool))
         self.surfaces[0].name = 'Left'
         self.surfaces[1].name = 'Right'
         self.update_gui_markers()

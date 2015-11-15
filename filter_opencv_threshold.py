@@ -1,11 +1,12 @@
+# -*- coding: utf-8 -*-
 '''
-(*)~----------------------------------------------------------------------------------
- Pupil - eye tracking platform
- Copyright (C) 2012-2015  Pupil Labs
+  Pupil Player Third Party Plugins by cpicanco
+  Copyright (C) 2015 Rafael Picanço.
 
- Distributed under the terms of the CC BY-NC-SA License.
- License details are in the file license.txt, distributed as part of this software.
-----------------------------------------------------------------------------------~(*)
+  Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 from gl_utils import draw_gl_points_norm

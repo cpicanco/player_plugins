@@ -14,191 +14,38 @@ from gl_utils import cvmat_to_glmat,clear_gl_screen
 from glfw import *
 from OpenGL.GL import *
 from pyglui.cygl.utils import create_named_texture,update_named_texture, draw_named_texture, draw_points_norm, RGBA
-from methods import GetAnglesPolyline,normalize
-from cache_list import Cache_List
-
-#ctypes import for atb_vars:
-from ctypes import c_int,c_bool,create_string_buffer
-from time import time
 
 import logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-from reference_surface import Reference_Surface
+from offline_reference_surface import Offline_Reference_Surface
 
-class Offline_Reference_Surface(Reference_Surface):
-    """docstring for Offline_Reference_Surface"""
+class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
+    """
+        Extend Offline_Reference_Surface to
+        1) show gaze cloud
+        2) allow heatmap gradation
+        3) 
+
+    """
     def __init__(self,g_pool,name="unnamed",saved_definition=None):
-        super(Offline_Reference_Surface, self).__init__(name,saved_definition)
+        super(Offline_Reference_Surface_Patch, self).__init__(name,saved_definition)
+        for p in g_pool.plugins:
+            if p.class_name = 'Offline_Reference_Surface':
+                p.alive = False
+                break
+
         self.g_pool = g_pool
         self.cache = None
         self.gaze_on_srf = [] # points on surface for realtime feedback display
 
         self.heatmap_blur = False
         self.heatmap_blur_gradation = .2
-        self.heatmap = None
-        self.heatmap_texture = None
+
         self.gaze_cloud = None
-        self.gaze_cloud_texture =None
-        self.metrics_gazecount = None
-        self.metrics_texture = None
 
         self.output_data = {}
-
-    #cache fn for offline marker
-    def locate_from_cache(self,frame_idx):
-        if self.cache == None:
-            #no cache available cannot update from cache
-            return False
-        cache_result = self.cache[frame_idx]
-        if cache_result == False:
-            #cached data not avaible for this frame
-            return False
-        elif cache_result == None:
-            #cached data shows surface not found:
-            self.detected = False
-            self.m_from_screen = None
-            self.m_to_screen = None
-            self.gaze_on_srf = []
-            self.detected_markers = 0
-            return True
-        else:
-            self.detected = True
-            self.m_from_screen = cache_result['m_from_screen']
-            self.m_to_screen =  cache_result['m_to_screen']
-            self.detected_markers = cache_result['detected_markers']
-            self.gaze_on_srf = self.gaze_on_srf_by_frame_idx(frame_idx,self.m_from_screen)
-            return True
-        raise Exception("Invalid cache entry. Please report Bug.")
-
-
-    def update_cache(self,marker_cache,idx=None):
-        '''
-        compute surface m's and gaze points from cached marker data
-        entries are:
-            - False: when marker cache entry was False (not yet searched)
-            - None: when surface was not found
-            - {'m_to_screen':,'m_from_screen':,'detected_markers':,gaze_on_srf}
-        '''
-
-        # iterations = 0
-
-        if self.cache == None:
-            pass
-            # self.init_cache(marker_cache)
-        elif idx != None:
-            #update single data pt
-            self.cache.update(idx,self.answer_caching_request(marker_cache,idx))
-        else:
-            # update where marker cache is not False but surface cache is still false
-            # this happens when the markercache was incomplete when this fn was run before
-            for i in range(len(marker_cache)):
-                if self.cache[i] == False and marker_cache[i] != False:
-                    self.cache.update(i,self.answer_caching_request(marker_cache,i))
-                    # iterations +=1
-        # return iterations
-
-
-
-    def init_cache(self,marker_cache):
-        if self.defined:
-            logger.debug("Full update of surface '%s' positons cache"%self.name)
-            self.cache = Cache_List([self.answer_caching_request(marker_cache,i) for i in xrange(len(marker_cache))],positive_eval_fn=lambda x:  (x!=False) and (x!=None))
-
-
-    def answer_caching_request(self,marker_cache,frame_index):
-        visible_markers = marker_cache[frame_index]
-        # cache point had not been visited
-        if visible_markers == False:
-            return False
-        # cache point had been visited
-        marker_by_id = dict( [ (m['id'],m) for m in visible_markers] )
-        visible_ids = set(marker_by_id.keys())
-        requested_ids = set(self.markers.keys())
-        overlap = visible_ids & requested_ids
-        detected_markers = len(overlap)
-        if len(overlap)>=min(2,len(requested_ids)):
-            yx = np.array( [marker_by_id[i]['verts_norm'] for i in overlap] )
-            uv = np.array( [self.markers[i].uv_coords for i in overlap] )
-            yx.shape=(-1,1,2)
-            uv.shape=(-1,1,2)
-            m_to_screen,mask = cv2.findHomography(uv,yx)
-            m_from_screen,mask = cv2.findHomography(yx,uv)
-
-            return {'m_to_screen':m_to_screen,
-                    'm_from_screen':m_from_screen,
-                    'detected_markers':len(overlap)}
-        else:
-            #surface not found
-            return None
-
-
-    def gaze_on_srf_by_frame_idx(self,frame_index,m_from_screen):
-        return self._on_srf_by_frame_idx(frame_index,m_from_screen,self.g_pool.gaze_positions_by_frame[frame_index])
-
-
-    def fixations_on_srf_by_frame_idx(self,frame_index,m_from_screen):
-        return self._on_srf_by_frame_idx(frame_index,m_from_screen,self.g_pool.fixations_by_frame[frame_index])
-
-
-    def _on_srf_by_frame_idx(self,frame_idx,m_from_screen,data_by_frame):
-        data_on_srf = []
-        for d in data_by_frame:
-            pos = np.array([d['norm_pos']]).reshape(1,1,2)
-            mapped_pos = cv2.perspectiveTransform(pos , m_from_screen )
-            mapped_pos.shape = (2)
-            on_srf = bool((0 <= mapped_pos[0] <= 1) and (0 <= mapped_pos[1] <= 1))
-            data_on_srf.append( {'norm_pos':(mapped_pos[0],mapped_pos[1]),'on_srf':on_srf,'base':d } )
-        return data_on_srf
-
-
-    def gl_display_heatmap(self):
-        if self.heatmap_texture and self.detected:
-
-            # cv uses 3x3 gl uses 4x4 tranformation matricies
-            m = cvmat_to_glmat(self.m_to_screen)
-
-            glMatrixMode(GL_PROJECTION)
-            glPushMatrix()
-            glLoadIdentity()
-            glOrtho(0, 1, 0, 1,-1,1) # gl coord convention
-
-            glMatrixMode(GL_MODELVIEW)
-            glPushMatrix()
-            #apply m  to our quad - this will stretch the quad such that the ref suface will span the window extends
-            glLoadMatrixf(m)
-
-            draw_named_texture(self.heatmap_texture)
-
-            glMatrixMode(GL_PROJECTION)
-            glPopMatrix()
-            glMatrixMode(GL_MODELVIEW)
-            glPopMatrix()
-
-
-    def gl_display_metrics(self):
-        if self.metrics_texture and self.detected:
-
-
-            # cv uses 3x3 gl uses 4x4 tranformation matricies
-            m = cvmat_to_glmat(self.m_to_screen)
-
-            glMatrixMode(GL_PROJECTION)
-            glPushMatrix()
-            glLoadIdentity()
-            glOrtho(0, 1, 0, 1,-1,1) # gl coord convention
-
-            glMatrixMode(GL_MODELVIEW)
-            glPushMatrix()
-            #apply m  to our quad - this will stretch the quad such that the ref suface will span the window extends
-            glLoadMatrixf(m)
-
-            draw_named_texture(self.metrics_texture)
-
-            glMatrixMode(GL_PROJECTION)
-            glPopMatrix()
-            glMatrixMode(GL_MODELVIEW)
-            glPopMatrix()
 
     def gl_display_gaze_cloud(self):
         if self.gaze_cloud_texture and self.detected:
@@ -397,25 +244,4 @@ class Offline_Reference_Surface(Reference_Surface):
         update_named_texture(self.gaze_cloud_texture, self.gaze_cloud)
 
 
-    def visible_count_in_section(self,section):
-        #section is a slice
-        #return number of frames where surface is visible.
-        #If cache is not available on frames it is reported as not visible
-        if self.cache is None:
-            return 0
-        section_cache = self.cache[section]
-        return sum(map(bool,section_cache))
-
-    def gaze_on_srf_in_section(self,section=slice(0,None)):
-        #section is a slice
-        #return number of gazepoints that are on surface in section
-        #If cache is not available on frames it is reported as not visible
-        if self.cache is None:
-            return []
-        gaze_on_srf = []
-        for frame_idx,c_e in enumerate(self.cache[section]):
-            frame_idx+=section.start
-            if c_e:
-                gaze_on_srf += [gp for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']) if gp['on_srf']]
-        return gaze_on_srf
-
+del Offline_Reference_Surface
