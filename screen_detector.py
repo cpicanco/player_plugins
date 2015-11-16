@@ -37,6 +37,10 @@ class Screen_Detector(Marker_Detector):
                 break
 
     def init_gui(self):
+        if self.g_pool.app == "player":
+            self.alive = False
+            logger.error('For capture only.')
+            return
         self.menu = ui.Growing_Menu('Screen Detector')
         self.g_pool.sidebar.append(self.menu)
 
