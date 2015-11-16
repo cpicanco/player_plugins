@@ -10,10 +10,19 @@
 '''
 # modified version of offline_marker_detector
 
-import os
+import os, platform
 import cv2
 import numpy as np
 import csv
+
+if platform.system() == 'Darwin':
+    from billiard import Process,Queue,forking_enable
+    from billiard.sharedctypes import Value
+else:
+    from multiprocessing import Process, Queue
+    forking_enable = lambda x: x #dummy fn
+    from multiprocessing.sharedctypes import Value
+from ctypes import c_bool
 
 from OpenGL.GL import *
 from methods import normalize #,denormalize
@@ -22,6 +31,7 @@ from glfw import glfwGetCurrentContext,glfwGetWindowSize,glfwGetCursorPos
 from pyglui import ui
 from pyglui.cygl.utils import *
 
+from file_methods import Persistent_Dict
 from screen_detector import Screen_Detector
 from offline_marker_detector import Offline_Marker_Detector
 from square_marker_detect import draw_markers,m_marker_to_screen
@@ -32,7 +42,8 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-class Offline_Screen_Detector(Screen_Detector, Offline_Marker_Detector):
+# first will look into Offline_Marker_Detector namespaces then Screen_Detector and so on
+class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
     """
     Special version of screen detector for use with videofile source.
     It uses a seperate process to search all frames in the world.avi file for markers.
@@ -44,9 +55,25 @@ class Offline_Screen_Detector(Screen_Detector, Offline_Marker_Detector):
 
     def __init__(self,g_pool,mode="Show Screen"):
         super(Offline_Screen_Detector, self).__init__(g_pool)
+
+        # we need to override self.surface inherited values
+        self.init_surfaces()
+
         # heatmap
         self.heatmap_blur = True
         self.heatmap_blur_gradation = 0.2
+
+    def init_surfaces(self):
+        self.surface_definitions = Persistent_Dict(os.path.join(self.g_pool.rec_dir,'surface_definitions'))
+        if self.surface_definitions.get('offline_square_marker_surfaces',[]) != []:
+            logger.debug("Found ref surfaces defined or copied in previous session.")
+            self.surfaces = [Offline_Reference_Surface_Extended(self.g_pool,saved_definition=d) for d in self.surface_definitions.get('offline_square_marker_surfaces',[]) if isinstance(d,dict)]
+        elif self.surface_definitions.get('realtime_square_marker_surfaces',[]) != []:
+            logger.debug("Did not find ref surfaces def created or used by the user in player from earlier session. Loading surfaces defined during capture.")
+            self.surfaces = [Offline_Reference_Surface_Extended(self.g_pool,saved_definition=d) for d in self.surface_definitions.get('realtime_square_marker_surfaces',[]) if isinstance(d,dict)]
+        else:
+            logger.debug("No surface defs found. Please define using GUI.")
+            self.surfaces = []
 
     def init_gui(self):
         self.menu = ui.Scrolling_Menu('Offline Screen Tracker')
@@ -57,6 +84,18 @@ class Offline_Screen_Detector(Screen_Detector, Offline_Marker_Detector):
         self.update_gui_markers()
 
         self.on_window_resize(glfwGetCurrentContext(),*glfwGetWindowSize(glfwGetCurrentContext()))
+
+    def init_marker_cacher(self):
+        forking_enable(0) #for MacOs only
+        from screen_detector_cacher import fill_cache
+        visited_list = [False if x == False else True for x in self.cache]
+        video_file_path =  self.g_pool.capture.src
+        timestamps = self.g_pool.capture.timestamps
+        self.cache_queue = Queue()
+        self.cacher_seek_idx = Value('i',0)
+        self.cacher_run = Value(c_bool,True)
+        self.cacher = Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter))
+        self.cacher.start()
 
     def screen_segmentation(self):
         """
@@ -165,90 +204,19 @@ class Offline_Screen_Detector(Screen_Detector, Offline_Marker_Detector):
         self.update_gui_markers()
 
     def recalculate(self):
-
+        super(Offline_Screen_Detector, self).recalculate()
+        # calc heatmaps
         in_mark = self.g_pool.trim_marks.in_mark
         out_mark = self.g_pool.trim_marks.out_mark
         section = slice(in_mark,out_mark)
-
-        # calc heatmaps
+        
         for s in self.surfaces:
             if s.defined:
                 s.heatmap_blur = self.heatmap_blur
                 s.heatmap_blur_gradation = self.heatmap_blur_gradation
-                s.generate_heatmap(section)
                 s.generate_gaze_cloud(section)
 
-        # calc distribution across all surfaces.
-        results = []
-        for s in self.surfaces:
-            gaze_on_srf  = s.gaze_on_srf_in_section(section)
-            results.append(len(gaze_on_srf))
-            self.metrics_gazecount = len(gaze_on_srf)
-
-        if results == []:
-            logger.warning("No surfaces defined.")
-            return
-        max_res = max(results)
-        results = np.array(results,dtype=np.float32)
-        if not max_res:
-            logger.warning("No gaze on any surface for this section!")
-        else:
-            results *= 255./max_res
-        results = np.uint8(results)
-        results_c_maps = cv2.applyColorMap(results, cv2.COLORMAP_JET)
-
-        for s,c_map in zip(self.surfaces,results_c_maps):
-            heatmap = np.ones((1,1,4),dtype=np.uint8)*125
-            heatmap[:,:,:3] = c_map
-            s.metrics_texture = create_named_texture(heatmap.shape)
-            update_named_texture(s.metrics_texture,heatmap)
-    
-    def update(self,frame,events):
-        self.img = frame.img
-        self.img_shape = frame.img.shape
-        self.update_marker_cache()
-        self.markers = self.cache[frame.index]
-        if self.markers == False:
-            self.markers = []
-            self.seek_marker_cacher(frame.index) # tell precacher that it better have every thing from here on analyzed
-
-        # locate surfaces
-        for s in self.surfaces:
-            if not s.locate_from_cache(frame.index):
-                s.locate(self.markers)
-            if s.detected:
-                pass
-                # events.append({'type':'marker_ref_surface','name':s.name,'uid':s.uid,'m_to_screen':s.m_to_screen,'m_from_screen':s.m_from_screen, 'timestamp':frame.timestamp,'gaze_on_srf':s.gaze_on_srf})
-
-        if self.mode == "Show marker IDs":
-            draw_markers(frame.img,self.markers)
-
-        # edit surfaces by user
-        if self.mode == "Surface edit mode":
-            window = glfwGetCurrentContext()
-            pos = glfwGetCursorPos(window)
-            pos = normalize(pos,glfwGetWindowSize(window),flip_y=True)
-
-            for s,v_idx in self.edit_surfaces:
-                if s.detected:
-                    new_pos =  s.img_to_ref_surface(np.array(pos))
-                    s.move_vertex(v_idx,new_pos)
-                    s.cache = None
-                    self.heatmap = None
-        else:
-            # update srf with no or invald cache:
-            for s in self.surfaces:
-                if s.cache == None:
-                    s.init_cache(self.cache)
-
-
-        #allow surfaces to open/close windows
-        for s in self.surfaces:
-            if s.window_should_close:
-                s.close_window()
-            if s.window_should_open:
-                s.open_window()
-
+ 
     def gl_display(self):
         """
         Display marker and surface info inside world screen
@@ -258,7 +226,6 @@ class Offline_Screen_Detector(Screen_Detector, Offline_Marker_Detector):
         if self.mode == "Show Gaze Cloud":
             for s in self.surfaces:
                 s.gl_display_gaze_cloud()
-
 
     def export_all_sections(self):
         for section in self.g_pool.trim_marks.sections:
@@ -318,8 +285,5 @@ class Offline_Screen_Detector(Screen_Detector, Offline_Marker_Detector):
             
             self.g_pool.capture.seek_to_frame(current_frame_index)
             logger.info("Done exporting reference surface data.")
-
-    def get_init_dict(self):
-        return {'mode':self.mode}
 
 del Offline_Marker_Detector
