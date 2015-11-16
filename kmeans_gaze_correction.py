@@ -77,4 +77,3 @@ class KMeans_Gaze_Correction(Plugin):
         self.g_pool.gaze_positions_by_frame = self.untouched_gaze_positions_by_frame
         self.notify_all({'subject':'gaze_positions_changed'})
         self.deinit_gui()
-
