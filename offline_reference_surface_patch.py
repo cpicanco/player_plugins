@@ -30,7 +30,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
     """
     def __init__(self,g_pool,name="unnamed",saved_definition=None):
-        super(Offline_Reference_Surface_Extended, self).__init__(name,saved_definition)
+        super(Offline_Reference_Surface_Extended, self).__init__(g_pool,name,saved_definition)
         self.g_pool = g_pool
         self.cache = None
         self.gaze_on_srf = [] # points on surface for realtime feedback display
@@ -241,6 +241,5 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         self.gaze_cloud_texture = create_named_texture()
         update_named_texture(self.gaze_cloud_texture, self.gaze_cloud)
-
 
 del Offline_Reference_Surface
