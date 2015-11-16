@@ -9,14 +9,13 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 from pyglui import ui
-import fixation_detector
-from fixation_detector import Dispersion_Duration_Fixation_Detector as dp
+from fixation_detector import Dispersion_Duration_Fixation_Detector 
 
 # logging
 import logging
 logger = logging.getLogger(__name__)
 
-class Dispersion_Duration_Fixation_Detector_Extended(dp):
+class Dispersion_Duration_Fixation_Detector_Extended(Dispersion_Duration_Fixation_Detector):
     '''
         Extend Dispersion_Duration_Fixation_Detector to export multi sections.
     '''
@@ -52,5 +51,5 @@ class Dispersion_Duration_Fixation_Detector_Extended(dp):
         for section in self.g_pool.trim_marks.sections:
             self.g_pool.trim_marks.focus = self.g_pool.trim_marks.sections.index(section)
             self.export_fixations()
-del dp
-del fixation_detector.Dispersion_Duration_Fixation_Detector
+
+del Dispersion_Duration_Fixation_Detector
