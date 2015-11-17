@@ -13,7 +13,7 @@ import cv2
 from copy import deepcopy
 from plugin import Plugin
 import numpy as np
-from methods import denormalize,normalize
+from methods import normalize
 from pyglui import ui
 import logging
 logger = logging.getLogger(__name__)
@@ -28,35 +28,37 @@ class KMeans_Gaze_Correction(Plugin):
         3) corrections is the screen center subtracted from bias
     """
 
-    def __init__(self,g_pool):
+    def __init__(self,g_pool, k=2):
         super(Manual_Gaze_Correction, self).__init__(g_pool)
         #let the plugin work before most other plugins.
         self.order = .3
         self.menu = None
 
         self.untouched_gaze_positions_by_frame = deepcopy(self.g_pool.gaze_positions_by_frame)
-        self.x_offset = float(x_offset)
-        self.y_offset = float(y_offset)
+        self._k = k
+        self._set_offset()
+
+    def _set_k(self, kvalue):
+        self._k = kvalue
         self._set_offset()
 
     def _set_offset(self):
-        x,y = self.x_offset,self.y_offset
-        for f in range(len(self.g_pool.gaze_positions_by_frame)):
-            for i in range(len(self.g_pool.gaze_positions_by_frame[f])):
-                gaze_pos = self.untouched_gaze_positions_by_frame[f][i]['norm_pos']
-                gaze_pos = gaze_pos[0]+x, gaze_pos[1]+y
-                self.g_pool.gaze_positions_by_frame[f][i]['norm_pos'] =  gaze_pos
-        self.notify_all_delayed({'subject':'gaze_positions_changed'})
-
+        # k = self._k
+        # xmax = 1280
+        # ymax = 768
+        # xmin = 0
+        # ymin = 0
+        # screen_center = 
+        pass
 
     def init_gui(self):
+        logger.error('Not implemented yet.')
         # initialize the menu
         self.menu = ui.Scrolling_Menu('Gaze Correction (k-means)')
         self.g_pool.gui.append(self.menu)
         self.menu.append(ui.Button('Close',self.unset_alive))
-        self.menu.append(ui.Info_Text('Move gaze horizontally and vertically. Screen width and height are one unit respectively.'))
-        self.menu.append(ui.Slider('x_offset',self,min=-1,step=0.01,max=1,setter=self._set_offset_x))
-        self.menu.append(ui.Slider('y_offset',self,min=-1,step=0.01,max=1,setter=self._set_offset_y))
+        self.menu.append(ui.Info_Text('Screen width and height are one unit respectively.'))
+        self.menu.append(ui.Slider('k',self,min=1,step=1,max=20,setter=self._set_k))
 
     def deinit_gui(self):
         if self.menu:

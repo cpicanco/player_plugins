@@ -162,7 +162,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.elements[:] = []
         self.menu.append(ui.Button('Close',self.close))
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
-        self.menu.append(ui.Selector('mode',self,label='Mode',selection=["Show Markers and Frames","Show marker IDs", "Surface edit mode","Show Heatmaps","Show Gaze Cloud","Show Metrics"] ))
+        self.menu.append(ui.Selector('mode',self,label='Mode',selection=["Show Markers and Frames","Show marker IDs", "Surface edit mode","Show Heatmaps","Show Gaze Cloud", "Show Gaze Correction","Show Metrics"] ))
         self.menu.append(ui.Info_Text('To see heatmap or surface metrics visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
         self.menu.append(ui.Button("(Re)-calculate gaze distributions", self.recalculate))
         self.menu.append(ui.Button("Add surface", lambda:self.add_surface('_')))
@@ -215,6 +215,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 s.heatmap_blur = self.heatmap_blur
                 s.heatmap_blur_gradation = self.heatmap_blur_gradation
                 s.generate_gaze_cloud(section)
+                s.generate_gaze_correction(section)
 
  
     def gl_display(self):
@@ -226,6 +227,10 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         if self.mode == "Show Gaze Cloud":
             for s in self.surfaces:
                 s.gl_display_gaze_cloud()
+
+        if self.mode == "Show Gaze Correction":
+            for s in self.surfaces:
+                s.gl_display_gaze_correction()
 
     def export_all_sections(self):
         for section in self.g_pool.trim_marks.sections:

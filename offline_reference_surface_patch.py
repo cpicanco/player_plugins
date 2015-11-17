@@ -17,7 +17,7 @@ from pyglui.cygl.utils import Named_Texture, draw_points_norm, RGBA
 
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 from offline_reference_surface import Offline_Reference_Surface
 
@@ -41,6 +41,9 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.gaze_cloud = None
         self.gaze_cloud_texture = None
 
+        self.gaze_correction = None
+        self.gaze_correction_texture = None
+
         self.output_data = {}
 
     def gl_display_gaze_cloud(self):
@@ -59,6 +62,28 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             glLoadMatrixf(m)
 
             self.gaze_cloud_texture.draw()
+
+            glMatrixMode(GL_PROJECTION)
+            glPopMatrix()
+            glMatrixMode(GL_MODELVIEW)
+            glPopMatrix()
+
+    def gl_display_gaze_correction(self):
+        if self.gaze_correction_texture and self.detected:
+            # cv uses 3x3 gl uses 4x4 tranformation matricies
+            m = cvmat_to_glmat(self.m_to_screen)
+
+            glMatrixMode(GL_PROJECTION)
+            glPushMatrix()
+            glLoadIdentity()
+            glOrtho(0, 1, 0, 1,-1,1) # gl coord convention
+
+            glMatrixMode(GL_MODELVIEW)
+            glPushMatrix()
+            #apply m  to our quad - this will stretch the quad such that the ref suface will span the window extends
+            glLoadMatrixf(m)
+
+            self.gaze_correction_texture.draw()
 
             glMatrixMode(GL_PROJECTION)
             glPopMatrix()
@@ -101,6 +126,9 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
             if self.gaze_cloud_texture:
                 self.gaze_cloud_texture.draw()
+
+            if self.gaze_correction_texture:
+                self.gaze_correction_texture.draw()
 
             # now lets get recent pupil positions on this surface:
             for gp in self.gaze_on_srf:
@@ -226,7 +254,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
         _,_,centers = cv2.kmeans(all_gaze_float,2,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
         for c in centers:
-            print c
+            #print c
             cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
 
         self.output_data = {'gaze':all_gaze_flipped,'kmeans':centers}
@@ -239,5 +267,97 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.gaze_cloud = img
         self.gaze_cloud_texture = Named_Texture()
         self.gaze_cloud_texture.update_from_ndarray(self.gaze_cloud)
+
+    def generate_gaze_correction(self,section):
+        def clamp_gaze_out_of_screen(xy, screen_x, screen_y):
+            xgood = (0 <= xy[:, 0]) & (xy[:, 0] <= screen_x)
+            ygood = (0 <= xy[:, 1]) & (xy[:, 1] <= screen_y)
+            xy_clamped = xy[xgood & ygood, :]
+            deleted_count = xy.shape[0] - xy_clamped.shape[0]
+            if deleted_count > 0:
+                logger.info("Removed %s data point(s) with out-of-screen coordinates."%deleted_count)
+            return xy_clamped
+
+        def bias(xyblock, screen_center, k=2):
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,10,1.0)
+            _, _, centers = cv2.kmeans(xyblock, k, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+            return centers.mean(axis = 0) - screen_center
+
+        def correct(block, bias):
+            block[:, 0] = block[:, 0] - bias[0]
+            block[:, 1] = block[:, 1] - bias[1]
+            return block
+
+        if self.cache is None:
+            logger.warning('Surface cache is not build yet.')
+            return
+            
+        x_size, y_size = self.real_world_size['x'], self.real_world_size['y']
+
+        all_gaze = []
+        for frame_idx,c_e in enumerate(self.cache[section]):
+            if c_e:
+                frame_idx+=section.start
+                for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+                    all_gaze.append(gp['norm_pos'])
+
+        if not all_gaze:
+            logger.warning("No gaze data on surface for gaze cloud found.")
+            all_gaze.append((-1., -1.))
+
+        all_gaze = np.array(all_gaze)
+
+        img = np.zeros((y_size,x_size,4), np.uint8)
+        img += 255
+
+        # plot gaze
+        all_gaze *= [x_size, y_size]
+        all_gaze_flipped = np.float32([[g[0], abs(g[1]-y_size)] for g in all_gaze])
+
+        screen_center = np.array([x_size/2.0, y_size/2.0])
+        clamped_gaze = clamp_gaze_out_of_screen(all_gaze_flipped, x_size, y_size)
+        gaze_count = clamped_gaze.shape[0] 
+        logger.info("There are %s gaze points."%gaze_count)
+
+        min_block_size = 1000
+        if gaze_count < min_block_size:
+            logger.error("Too few data to proceed.")
+            return
+
+        bias_along_blocks = []
+        unbiased_gaze = []
+        for block_start in range(0, gaze_count, min_block_size):
+            block_end = block_start + min_block_size
+            if block_end <= gaze_count:
+                gaze_block = clamped_gaze[block_start:block_end, :]
+                gaze_bias = bias(gaze_block, screen_center)
+            else:
+                gaze_block = clamped_gaze[block_start:gaze_count, :]
+
+            bias_along_blocks.append(gaze_bias)
+            unbiased_gaze.append(correct(gaze_block, gaze_bias))
+
+        bias_along_blocks = np.vstack(bias_along_blocks)
+        unbiased_gaze = np.vstack(unbiased_gaze)
+
+        for g in unbiased_gaze:
+            cv2.circle(img, (int(g[0]),int(g[1])), 3, (0, 0, 0), 0)
+    
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        _,_,centers = cv2.kmeans(unbiased_gaze,2,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
+        for c in centers:
+            #print c
+            cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
+
+        self.output_data = {'gaze':unbiased_gaze,'kmeans':centers,'bias':bias_along_blocks}
+
+        alpha = img.copy()
+        alpha -= .5*255
+        alpha *= -1
+        img[:,:,3] = alpha[:,:,0]
+
+        self.gaze_correction = img
+        self.gaze_correction_texture = Named_Texture()
+        self.gaze_correction_texture.update_from_ndarray(self.gaze_correction)
 
 del Offline_Reference_Surface
