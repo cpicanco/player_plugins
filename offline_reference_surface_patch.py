@@ -13,7 +13,7 @@ import cv2
 from gl_utils import cvmat_to_glmat,clear_gl_screen
 from glfw import *
 from OpenGL.GL import *
-from pyglui.cygl.utils import create_named_texture,update_named_texture, draw_named_texture, draw_points_norm, RGBA
+from pyglui.cygl.utils import Named_Texture, draw_points_norm, RGBA
 
 import logging
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             #apply m  to our quad - this will stretch the quad such that the ref suface will span the window extends
             glLoadMatrixf(m)
 
-            draw_named_texture(self.gaze_cloud_texture)
+            self.gaze_cloud_texture.draw()
 
             glMatrixMode(GL_PROJECTION)
             glPopMatrix()
@@ -66,7 +66,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             glPopMatrix()
 
     #### fns to draw surface in seperate window
-    def gl_display_in_window(self,world_tex_id):
+    def gl_display_in_window(self,world_tex):
         """
         here we map a selected surface onto a seperate window.
         """
@@ -88,7 +88,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             #apply m  to our quad - this will stretch the quad such that the ref suface will span the window extends
             glLoadMatrixf(m)
 
-            draw_named_texture(world_tex_id)
+            world_tex.draw()
 
             glMatrixMode(GL_PROJECTION)
             glPopMatrix()
@@ -97,10 +97,10 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
 
             if self.heatmap_texture:
-                draw_named_texture(self.heatmap_texture)
+                self.heatmap_texture.draw()
 
             if self.gaze_cloud_texture:
-                draw_named_texture(self.gaze_cloud_texture)
+                self.gaze_cloud_texture.draw()
 
             # now lets get recent pupil positions on this surface:
             for gp in self.gaze_on_srf:
@@ -108,7 +108,6 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
             glfwSwapBuffers(self._window)
             glfwMakeContextCurrent(active_window)
-
 
     def generate_heatmap(self,section):
         if self.cache is None:
@@ -188,8 +187,8 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             self.heatmap = cv2.resize(src=self.heatmap, dsize=dsize, fx=0, fy=0, interpolation=inter)
 
         # texturing
-        self.heatmap_texture = create_named_texture()
-        update_named_texture(self.heatmap_texture, self.heatmap)
+        self.heatmap_texture = Named_Texture()
+        self.heatmap_texture.update_from_ndarray(self.heatmap)
 
     def generate_gaze_cloud(self,section):
         if self.cache is None:
@@ -238,8 +237,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         img[:,:,3] = alpha[:,:,0]
 
         self.gaze_cloud = img
-
-        self.gaze_cloud_texture = create_named_texture()
-        update_named_texture(self.gaze_cloud_texture, self.gaze_cloud)
+        self.gaze_cloud_texture = Named_Texture()
+        self.gaze_cloud_texture.update_from_ndarray(self.gaze_cloud)
 
 del Offline_Reference_Surface
