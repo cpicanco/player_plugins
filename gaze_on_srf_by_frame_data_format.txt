@@ -1,0 +1,47 @@
+# for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+# gp
+{	
+	# normalized gaze coordenate with flipped y (x, y)
+	'norm_pos': (0.36288441290981305, 0.37751388431933736),
+
+	# if the gaze was inside the surface
+	'on_srf': True,
+
+	# ?
+	'base':
+		{
+			# the timestamp of the frame associated with the gaze
+			'timestamp': 4271.1251454290004,
+
+			# pupil detection confidence
+			'confidence': 1.0,
+
+			# ?
+			'base':
+				[{
+					# index of the frame associated with the gaze coordenate
+					'index': 0,
+
+					# pupil detection confidence ?
+					'confidence': 1.0,
+
+					# apparent diameter of the detected pupil
+					'diameter': 65.222038269042969,
+
+					# the timestamp of the frame associated with the gaze
+					'timestamp': 4271.1251454290004,
+
+					# ?
+					'norm_pos': [0.5893456697463989, 0.60578858057657881],
+
+					# marker id's associated with the surface
+					'id': 0.0
+				}],
+
+			# index of the frame associated with the gaze coordenate
+			'index': 0,
+
+			# ?
+			'norm_pos': [0.46739029643213748, 0.41818694680264912]
+		}
+}
