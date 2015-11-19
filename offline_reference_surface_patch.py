@@ -15,6 +15,8 @@ from glfw import *
 from OpenGL.GL import *
 from pyglui.cygl.utils import Named_Texture, draw_points_norm, RGBA
 
+from methods import normalize, denormalize
+
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -242,8 +244,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         img += 255
 
         # plot gaze
-        all_gaze *= [x_size, y_size]
-        all_gaze_flipped = [[g[0], abs(g[1]-y_size)] for g in all_gaze]
+        all_gaze_flipped = [denormalize(g,(x_size, y_size),True) for g in all_gaze]
 
         for g in all_gaze_flipped:
             cv2.circle(img, (int(g[0]),int(g[1])), 3, (0, 0, 0), 0)
@@ -269,55 +270,55 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.gaze_cloud_texture.update_from_ndarray(self.gaze_cloud)
 
     def generate_gaze_correction(self,section):
-        def clamp_gaze_out_of_screen(xy, screen_x, screen_y):
-            xgood = (0 <= xy[:, 0]) & (xy[:, 0] <= screen_x)
-            ygood = (0 <= xy[:, 1]) & (xy[:, 1] <= screen_y)
-            xy_clamped = xy[xgood & ygood, :]
-            deleted_count = xy.shape[0] - xy_clamped.shape[0]
-            if deleted_count > 0:
-                logger.info("Removed %s data point(s) with out-of-screen coordinates."%deleted_count)
-            return xy_clamped
-
-        def bias(xyblock, screen_center, k=2):
+        # todo: implement more robust outlier handling
+        # def remove_outliers(gaze_points):
+ 
+        def bias(gaze_block, k=2):
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,10,1.0)
-            _, _, centers = cv2.kmeans(xyblock, k, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-            return centers.mean(axis = 0) - screen_center
+            _, _, centers = cv2.kmeans(gaze_block, k, criteria, 20, cv2.KMEANS_RANDOM_CENTERS)
+            #screen_center = normalize([x_size/2.0, y_size/2.0],(x_size,y_size), True)
+            return centers.mean(axis = 0) - (0.5, 0.5) #screen_center
 
-        def correct(block, bias):
-            block[:, 0] = block[:, 0] - bias[0]
-            block[:, 1] = block[:, 1] - bias[1]
-            return block
+        def correct(gaze_block, bias):
+            gaze_block[:, 0] -= bias[0]
+            gaze_block[:, 1] -= bias[1]
+            return gaze_block
 
         if self.cache is None:
-            logger.warning('Surface cache is not build yet.')
+            logger.error('Surface cache is not build yet.')
             return
             
-        x_size, y_size = self.real_world_size['x'], self.real_world_size['y']
-
         all_gaze = []
+        gaze_outside_srf = []
+        gaze_no_confidence = []
         for frame_idx,c_e in enumerate(self.cache[section]):
             if c_e:
                 frame_idx+=section.start
                 for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
-                    all_gaze.append(gp['norm_pos'])
+                    if gp['on_srf']:
+                        if gp['base']['confidence'] > 0.98:
+                            all_gaze.append(gp['norm_pos'])
+                        else:
+                            gaze_no_confidence.append(gp)
+                    else:
+                        gaze_outside_srf.append(gp)
 
         if not all_gaze:
-            logger.warning("No gaze data on surface for gaze cloud found.")
-            all_gaze.append((-1., -1.))
-
-        all_gaze = np.array(all_gaze)
-
-        img = np.zeros((y_size,x_size,4), np.uint8)
-        img += 255
+            logger.error("No gaze point on surface found.")
+            return
+        else:
+            gaze_count = len(all_gaze)
+            logger.info("Found %s gaze points."%gaze_count)
+            logger.info("Removed %s outside surface."%len(gaze_outside_srf))
+            logger.info("Removed %s with < 0.5"%len(gaze_no_confidence))
 
         # plot gaze
-        all_gaze *= [x_size, y_size]
-        all_gaze_flipped = np.float32([[g[0], abs(g[1]-y_size)] for g in all_gaze])
+        # denormalize and flip y
+        # all_gaze *= [x_size, y_size]
+        # all_gaze_flipped = np.float32([[g[0], abs(g[1]-y_size)] for g in all_gaze])
 
-        screen_center = np.array([x_size/2.0, y_size/2.0])
-        clamped_gaze = clamp_gaze_out_of_screen(all_gaze_flipped, x_size, y_size)
-        gaze_count = clamped_gaze.shape[0] 
-        logger.info("There are %s gaze points."%gaze_count)
+        # screen_center = np.array([x_size/2.0, y_size/2.0])
+        clamped_gaze = np.float32(np.array(all_gaze))
 
         min_block_size = 1000
         if gaze_count < min_block_size:
@@ -328,28 +329,42 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         unbiased_gaze = []
         for block_start in range(0, gaze_count, min_block_size):
             block_end = block_start + min_block_size
+            print block_start, block_end
             if block_end <= gaze_count:
                 gaze_block = clamped_gaze[block_start:block_end, :]
-                gaze_bias = bias(gaze_block, screen_center)
+                gaze_bias = bias(gaze_block)
             else:
                 gaze_block = clamped_gaze[block_start:gaze_count, :]
 
             bias_along_blocks.append(gaze_bias)
             unbiased_gaze.append(correct(gaze_block, gaze_bias))
 
-        bias_along_blocks = np.vstack(bias_along_blocks)
+        bias_along_blocks = bias_along_blocks
         unbiased_gaze = np.vstack(unbiased_gaze)
 
-        for g in unbiased_gaze:
-            cv2.circle(img, (int(g[0]),int(g[1])), 3, (0, 0, 0), 0)
-    
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        _,_,centers = cv2.kmeans(unbiased_gaze,2,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
-        for c in centers:
-            #print c
-            cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
+        x_size, y_size = self.real_world_size['x'], self.real_world_size['y'] 
+        bias_along_blocks = [denormalize(b, (x_size, y_size), True) for b in bias_along_blocks]
+        unbiased_gaze = np.float32([denormalize(g, (x_size, y_size), True) for g in unbiased_gaze])
+        #unbiased_gaze *= [x_size, y_size]
+        #unbiased_gaze = np.float32([[g[0], abs(g[1]-y_size)] for g in unbiased_gaze])
 
-        self.output_data = {'gaze':unbiased_gaze,'kmeans':centers,'bias':bias_along_blocks}
+        img = np.zeros((y_size,x_size,4), np.uint8)
+        img += 255
+
+        for g in unbiased_gaze:
+            cv2.circle(img, (int(g[0]),int(g[1])), 5, (0, 0, 0), 0)
+
+        #criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        #_,_,centers = cv2.kmeans(unbiased_gaze,2,criteria,20,cv2.KMEANS_RANDOM_CENTERS)
+
+        for b in bias_along_blocks:
+            cv2.circle(img, (int(b[0]),int(b[1])), 10, (0, 0, 255), -1)
+
+        # for c in centers:
+        #     #print c
+        #     cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
+
+        #self.output_data = {'gaze':unbiased_gaze,'kmeans':centers,'bias':bias_along_blocks}
 
         alpha = img.copy()
         alpha -= .5*255
