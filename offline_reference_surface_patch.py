@@ -275,13 +275,18 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
  
         def bias(gaze_block, k=2):
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,10,1.0)
-            _, _, centers = cv2.kmeans(gaze_block, k, criteria, 20, cv2.KMEANS_RANDOM_CENTERS)
-            #screen_center = normalize([x_size/2.0, y_size/2.0],(x_size,y_size), True)
-            return centers.mean(axis = 0) - (0.5, 0.5) #screen_center
+            _, _, centers = cv2.kmeans(data=gaze_block,
+                                       K=k,
+                                       criteria=criteria,
+                                       attempts=10,
+                                       flags=cv2.KMEANS_RANDOM_CENTERS)
+            
+            centers_mean = centers.mean(axis = 0)
+            return centers_mean - np.array([x_size/2.0, y_size/2.0])
 
-        def correct(gaze_block, bias):
-            gaze_block[:, 0] -= bias[0]
-            gaze_block[:, 1] -= bias[1]
+        def correction(gaze_block, bias):
+            gaze_block[:, 0] = gaze_block[:, 0] - bias[0]
+            gaze_block[:, 1] = gaze_block[:, 1] - bias[1]
             return gaze_block
 
         if self.cache is None:
@@ -312,13 +317,11 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             logger.info("Removed %s outside surface."%len(gaze_outside_srf))
             logger.info("Removed %s with < 0.5"%len(gaze_no_confidence))
 
-        # plot gaze
-        # denormalize and flip y
-        # all_gaze *= [x_size, y_size]
-        # all_gaze_flipped = np.float32([[g[0], abs(g[1]-y_size)] for g in all_gaze])
-
-        # screen_center = np.array([x_size/2.0, y_size/2.0])
-        clamped_gaze = np.float32(np.array(all_gaze))
+        # denormalize (and flip y)
+        # right now, we must denormalize before the conversion from float64 to float32 
+        # would be excelent to have a kmeans implementation that does not require such a conversion
+        x_size, y_size = self.real_world_size['x'], self.real_world_size['y'] 
+        clamped_gaze = np.array([denormalize(g, (x_size, y_size), True) for g in all_gaze]).astype('float32')
 
         min_block_size = 1000
         if gaze_count < min_block_size:
@@ -329,7 +332,6 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         unbiased_gaze = []
         for block_start in range(0, gaze_count, min_block_size):
             block_end = block_start + min_block_size
-            print block_start, block_end
             if block_end <= gaze_count:
                 gaze_block = clamped_gaze[block_start:block_end, :]
                 gaze_bias = bias(gaze_block)
@@ -337,34 +339,31 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
                 gaze_block = clamped_gaze[block_start:gaze_count, :]
 
             bias_along_blocks.append(gaze_bias)
-            unbiased_gaze.append(correct(gaze_block, gaze_bias))
+            unbiased_gaze.append(correction(gaze_block, gaze_bias))
 
-        bias_along_blocks = bias_along_blocks
+        bias_along_blocks = np.vstack(bias_along_blocks)
         unbiased_gaze = np.vstack(unbiased_gaze)
 
-        x_size, y_size = self.real_world_size['x'], self.real_world_size['y'] 
-        bias_along_blocks = [denormalize(b, (x_size, y_size), True) for b in bias_along_blocks]
-        unbiased_gaze = np.float32([denormalize(g, (x_size, y_size), True) for g in unbiased_gaze])
-        #unbiased_gaze *= [x_size, y_size]
-        #unbiased_gaze = np.float32([[g[0], abs(g[1]-y_size)] for g in unbiased_gaze])
-
+        
+        bias_along_blocks = [b + [x_size, y_size] for b in bias_along_blocks]
+    
+        # draw
         img = np.zeros((y_size,x_size,4), np.uint8)
         img += 255
 
         for g in unbiased_gaze:
             cv2.circle(img, (int(g[0]),int(g[1])), 5, (0, 0, 0), 0)
 
-        #criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        #_,_,centers = cv2.kmeans(unbiased_gaze,2,criteria,20,cv2.KMEANS_RANDOM_CENTERS)
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        _,_,centers = cv2.kmeans(unbiased_gaze.astype('float32'),2,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
+
+        for c in centers:
+             cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
 
         for b in bias_along_blocks:
-            cv2.circle(img, (int(b[0]),int(b[1])), 10, (0, 0, 255), -1)
+            cv2.circle(img, (int(b[0]),int(b[1])), 5, (255, 0, 0), -1)
 
-        # for c in centers:
-        #     #print c
-        #     cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
-
-        #self.output_data = {'gaze':unbiased_gaze,'kmeans':centers,'bias':bias_along_blocks}
+        self.output_data = {'gaze':unbiased_gaze,'kmeans':centers,'bias':bias_along_blocks}
 
         alpha = img.copy()
         alpha -= .5*255
