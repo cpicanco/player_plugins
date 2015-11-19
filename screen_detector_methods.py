@@ -47,8 +47,6 @@ def detect_screens(gray_img,grid_size):
             mapped_space = np.array( ((0,0),(size,0),(size,size),(0,size)) ,dtype=np.float32).reshape(4,1,2)
             for r in rect_cand:
                 r = np.float32(r)
-                M = cv2.getPerspectiveTransform(r,mapped_space)
-                flat_marker_img =  cv2.warpPerspective(gray_img, M, (size,size) )#[, dst[, flags[, borderMode[, borderValue]]]])
 
                 screen = 0, 1
                 if screen is not None:
@@ -90,7 +88,6 @@ tick = 0
 # modified L97, everything else keeped for compatibility issues with existing code
 def detect_markers_robust(gray_img,grid_size,prev_markers,min_marker_perimeter=40,aperture=11,visualize=False,true_detect_every_frame = 1):
     global prev_img
-
     global tick
     if not tick:
         tick = true_detect_every_frame
