@@ -146,9 +146,6 @@ class Segmentation(Plugin):
         self.g_pool.gui.append(self.menu)
         self.on_window_resize(glfwGetCurrentContext(),*glfwGetWindowSize(glfwGetCurrentContext()))
 
-    def cleanup(self):
-        self.deinit_gui()
-
     def on_window_resize(self,window,w,h):
         self.window_size = w,h
         self.h_pad = self.padding * self.frame_count/float(w)
@@ -199,6 +196,13 @@ class Segmentation(Plugin):
         if self.menu:
             self.g_pool.gui.remove(self.menu)
             self.menu = None
+            
+    def cleanup(self):
+        """ called when the plugin gets terminated.
+        This happens either voluntarily or forced.
+        if you have a GUI or glfw window destroy it here.
+        """
+        self.deinit_gui()
 
     def unset_alive(self):
         self.alive = False
@@ -207,6 +211,3 @@ class Segmentation(Plugin):
         return {'custom_events':self.custom_events,
                 'mode':self.mode,
                 'keep_create_order':self.keep_create_order}
-
-    def clone(self):
-        return Segmentation(**self.get_init_dict())

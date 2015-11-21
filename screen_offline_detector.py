@@ -55,15 +55,16 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
     def __init__(self,g_pool,mode="Show Screen"):
         super(Offline_Screen_Detector, self).__init__(g_pool)
-
+        self.g_pool = g_pool
         # we need to override self.surface inherited values
         self.init_surfaces()
 
         # heatmap
         self.heatmap_blur = True
         self.heatmap_blur_gradation = 0.2
-        self.gaze_correction_block_size = 1000
+        self.gaze_correction_block_size = '1000'
         self.gaze_correction_min_confidence = 0.98
+        self.gaze_correction_k = 2
 
     def init_surfaces(self):
         self.surface_definitions = Persistent_Dict(os.path.join(self.g_pool.rec_dir,'surface_definitions'))
@@ -78,7 +79,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.surfaces = []
 
     def init_gui(self):
-        self.menu = ui.Scrolling_Menu('Offline Screen Tracker')
+        self.menu = ui.Scrolling_Menu('Offline Screen Detector')
         self.g_pool.gui.append(self.menu)
 
         self.add_button = ui.Thumb('add_surface',setter=self.add_surface,getter=lambda:False,label='Add Surface',hotkey='a')
@@ -126,7 +127,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 correcly_named[1] = (s.name == 'Right')
 
         if not (correcly_named[0] and correcly_named[1]):
-            logger.error('Please, create two identical surfaces and name them as "Left" and "Right"')
+            logger.error('Please, create two identical surfaces and name them as "Left" and "Right".')
             return
             
         surface_vertices_to_move = []
@@ -177,20 +178,21 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
         self.menu.append(ui.Selector('mode',self,label='Mode',selection=["Show Markers and Frames","Show marker IDs", "Surface edit mode","Show Heatmaps","Show Gaze Cloud", "Show Gaze Correction","Show Metrics"] ))
         self.menu.append(ui.Info_Text('To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
-        self.menu.append(ui.Button("(Re)-calculate gaze distributions", self.recalculate))
-        self.menu.append(ui.Button("Add screen surface", lambda:self.add_surface('_')))
+        self.menu.append(ui.Button("(Re)-calculate gaze distributions",self.recalculate))
+        self.menu.append(ui.Button("Add screen surface",lambda:self.add_surface('_')))
 
-        self.menu.append(ui.Info_Text('1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
-        self.menu.append(ui.Button("Left Right segmentation", self.screen_segmentation))
+        self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
+        self.menu.append(ui.Text_Input('gaze_correction_block_size',self,label='Block Size'))
+        self.menu.append(ui.Slider('gaze_correction_min_confidence',self,min=0.0,step=0.01,max=1.0,label='Minimun gaze confidence'))
+        self.menu.append(ui.Slider('gaze_correction_k',self,min=2,step=1,max=24,label='K clusters'))
+
+        self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
+        self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
 
         self.menu.append(ui.Info_Text('Heatmap Blur'))
-        self.menu.append(ui.Switch('heatmap_blur', self, label='Blur'))
+        self.menu.append(ui.Switch('heatmap_blur',self,label='Blur'))
         self.menu.append(ui.Slider('heatmap_blur_gradation',self,min=0.01,step=0.01,max=1.0,label='Blur Gradation'))
 
-        self.menu.append(ui.Info_Text('Gaze Correction Parameters requires a non segmented screen'))
-        self.menu.append(ui.Text_Input('gaze_correction_block_size', self,label='Block Size'))
-        self.menu.append(ui.Switch('gaze_correction_min_confidence', self,min=0.0,step=0.01,max=1.0,label='Minimun gaze confidence')))
-        
         self.menu.append(ui.Info_Text('Export gaze metrics. We recalculate metrics for each section when exporting all sections. Press the recalculate button before export the current selected section.'))
         self.menu.append(ui.Button("Export current section", self.save_surface_statsics_to_file))
         self.menu.append(ui.Button("Export all sections", self.export_all_sections))
@@ -242,9 +244,9 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 s.generate_gaze_cloud(section)
                 s.gaze_correction_block_size = self.gaze_correction_block_size
                 s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
+                s.gaze_correction_k = self.gaze_correction_k
                 s.generate_gaze_correction(section)
 
- 
     def gl_display(self):
         """
         Display marker and surface info inside world screen
@@ -318,4 +320,13 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.g_pool.capture.seek_to_frame(current_frame_index)
             logger.info("Done exporting reference surface data.")
 
+    def get_init_dict(self):
+        return {'mode':self.mode}
+
+    def on_notify(self,notification):
+        if notification['subject'] == 'gaze_positions_changed':
+            logger.info('Gaze positions changed. Please, recalculate.')
+            #self.recalculate()
+
+del Screen_Detector
 del Offline_Marker_Detector

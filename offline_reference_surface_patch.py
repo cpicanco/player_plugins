@@ -37,7 +37,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.cache = None
         self.gaze_on_srf = [] # points on surface for realtime feedback display
 
-        self.heatmap_blur = False
+        self.heatmap_blur = True
         self.heatmap_blur_gradation = .2
 
         self.gaze_cloud = None
@@ -47,6 +47,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.gaze_correction_texture = None
         self.gaze_correction_block_size = 1000
         self.gaze_correction_min_confidence = 0.98
+        self.gaze_correction_k = 2
 
         self.output_data = {}
 
@@ -280,9 +281,8 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
                 if p.alive:
                     kmeans_plugin_alive = True 
                     kmeans_plugin = p
-                    kmeans_plugin.load_untouched_gaze()
-
-                break
+                    kmeans_plugin.load_untouched_gaze_no_notify()
+                    break
 
         def bias(gaze_block, k=2):
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,10,1.0)
@@ -329,7 +329,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             logger.info('Found %s frames with no surface.'%no_surface)
             logger.info("Found %s gaze points."%gaze_count)
             logger.info("Removed %s outside surface."%gaze_outside_srf)
-            logger.info("Removed %s with confidence < %s"%gaze_no_confidence, self.gaze_correction_min_confidence)
+            logger.info("Removed '{0}' with confidence < '{1}'".format(gaze_no_confidence, self.gaze_correction_min_confidence))
 
         # denormalize (and flip y)
         # right now, we must denormalize before the conversion from float64 to float32 
@@ -337,7 +337,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         x_size, y_size = self.real_world_size['x'], self.real_world_size['y'] 
         clamped_gaze = np.array([denormalize(g['norm_pos'], (x_size, y_size), True) for g in all_gaze]).astype('float32')
 
-        min_block_size = self.gaze_correction_block_size
+        min_block_size = int(self.gaze_correction_block_size)
 
         if gaze_count < min_block_size:
             logger.error("Too few data to proceed.")
