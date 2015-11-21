@@ -45,6 +45,8 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         self.gaze_correction = None
         self.gaze_correction_texture = None
+        self.gaze_correction_block_size = 1000
+        self.gaze_correction_min_confidence = 0.98
 
         self.output_data = {}
 
@@ -272,7 +274,16 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
     def generate_gaze_correction(self,section):
         # todo: implement more robust outlier handling
         # def remove_outliers(gaze_points):
- 
+        kmeans_plugin_alive = False
+        for p in self.g_pool.plugins:
+            if p.class_name == 'KMeans_Gaze_Correction':
+                if p.alive:
+                    kmeans_plugin_alive = True 
+                    kmeans_plugin = p
+                    kmeans_plugin.load_untouched_gaze()
+
+                break
+
         def bias(gaze_block, k=2):
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,10,1.0)
             _, _, centers = cv2.kmeans(data=gaze_block,
@@ -280,50 +291,54 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
                                        criteria=criteria,
                                        attempts=10,
                                        flags=cv2.KMEANS_RANDOM_CENTERS)
-            
-            centers_mean = centers.mean(axis = 0)
-            return centers_mean - np.array([x_size/2.0, y_size/2.0])
+
+            return centers.mean(axis = 0) - np.array([x_size/2.0, y_size/2.0])
 
         def correction(gaze_block, bias):
-            gaze_block[:, 0] = gaze_block[:, 0] - bias[0]
-            gaze_block[:, 1] = gaze_block[:, 1] - bias[1]
+            gaze_block[:, 0] -= bias[0]
+            gaze_block[:, 1] -= bias[1]
             return gaze_block
 
         if self.cache is None:
             logger.error('Surface cache is not build yet.')
             return
-            
+
         all_gaze = []
-        gaze_outside_srf = []
-        gaze_no_confidence = []
+        gaze_outside_srf = 0
+        gaze_no_confidence = 0
+        no_surface = 0
         for frame_idx,c_e in enumerate(self.cache[section]):
             if c_e:
                 frame_idx+=section.start
-                for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+                for i, gp in enumerate(self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
                     if gp['on_srf']:
-                        if gp['base']['confidence'] > 0.98:
-                            all_gaze.append(gp['norm_pos'])
+                        if gp['base']['confidence'] >= self.gaze_correction_min_confidence:
+                            all_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos']})
                         else:
-                            gaze_no_confidence.append(gp)
+                            gaze_no_confidence += 1
                     else:
-                        gaze_outside_srf.append(gp)
+                        gaze_outside_srf += 1
+            else:
+                no_surface += 1
 
         if not all_gaze:
             logger.error("No gaze point on surface found.")
             return
         else:
             gaze_count = len(all_gaze)
+            logger.info('Found %s frames with no surface.'%no_surface)
             logger.info("Found %s gaze points."%gaze_count)
-            logger.info("Removed %s outside surface."%len(gaze_outside_srf))
-            logger.info("Removed %s with < 0.5"%len(gaze_no_confidence))
+            logger.info("Removed %s outside surface."%gaze_outside_srf)
+            logger.info("Removed %s with confidence < %s"%gaze_no_confidence, self.gaze_correction_min_confidence)
 
         # denormalize (and flip y)
         # right now, we must denormalize before the conversion from float64 to float32 
         # would be excelent to have a kmeans implementation that does not require such a conversion
         x_size, y_size = self.real_world_size['x'], self.real_world_size['y'] 
-        clamped_gaze = np.array([denormalize(g, (x_size, y_size), True) for g in all_gaze]).astype('float32')
+        clamped_gaze = np.array([denormalize(g['norm_pos'], (x_size, y_size), True) for g in all_gaze]).astype('float32')
 
-        min_block_size = 1000
+        min_block_size = self.gaze_correction_block_size
+
         if gaze_count < min_block_size:
             logger.error("Too few data to proceed.")
             return
@@ -334,18 +349,15 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             block_end = block_start + min_block_size
             if block_end <= gaze_count:
                 gaze_block = clamped_gaze[block_start:block_end, :]
-                gaze_bias = bias(gaze_block)
+                gaze_bias = bias(gaze_block, self.gaze_correction_k)
             else:
-                gaze_block = clamped_gaze[block_start:gaze_count, :]
+                block_end = gaze_count
+                gaze_block = clamped_gaze[block_start:block_end, :]
 
-            bias_along_blocks.append(gaze_bias)
+            bias_along_blocks.append({'bias':gaze_bias, 'block':[block_start,block_end]})
             unbiased_gaze.append(correction(gaze_block, gaze_bias))
 
-        bias_along_blocks = np.vstack(bias_along_blocks)
         unbiased_gaze = np.vstack(unbiased_gaze)
-
-        
-        bias_along_blocks = [b + [x_size, y_size] for b in bias_along_blocks]
     
         # draw
         img = np.zeros((y_size,x_size,4), np.uint8)
@@ -360,10 +372,15 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         for c in centers:
              cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
 
-        for b in bias_along_blocks:
+        bias_to_draw = [b['bias'] + [x_size, y_size] for b in bias_along_blocks]
+        for b in bias_to_draw:
             cv2.circle(img, (int(b[0]),int(b[1])), 5, (255, 0, 0), -1)
 
-        self.output_data = {'gaze':unbiased_gaze,'kmeans':centers,'bias':bias_along_blocks}
+        unbiased_gaze = [{'frame':g['frame'], 'i': g['i'], 'gaze':unbiased_gaze[i]} for i, g in enumerate(all_gaze)]
+
+        self.output_data['unbiased_gaze'] = unbiased_gaze
+        self.output_data['unbiased_kmeans'] = centers
+        self.output_data['bias_along_blocks'] = bias_along_blocks
 
         alpha = img.copy()
         alpha -= .5*255
@@ -373,5 +390,8 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.gaze_correction = img
         self.gaze_correction_texture = Named_Texture()
         self.gaze_correction_texture.update_from_ndarray(self.gaze_correction)
+
+        if kmeans_plugin_alive:
+            kmeans_plugin.gaze_correction()
 
 del Offline_Reference_Surface
