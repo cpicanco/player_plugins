@@ -7,7 +7,7 @@
 	# if the gaze was inside the surface
 	'on_srf': True,
 
-	# ?
+	# base data to the cv2.perspectiveTransform at offline_reference_surface._on_srf_by_frame_index
 	'base':
 		{
 			# the timestamp of the frame associated with the gaze
@@ -16,7 +16,7 @@
 			# pupil detection confidence
 			'confidence': 1.0,
 
-			# ?
+			# base data to the cv2.perpectiveTransform at ?
 			'base':
 				[{
 					# index of the frame associated with the gaze coordenate
@@ -41,7 +41,7 @@
 			# index of the frame associated with the gaze coordenate
 			'index': 0,
 
-			# ?
+			# normalized pupil position
 			'norm_pos': [0.46739029643213748, 0.41818694680264912]
 		}
 }
