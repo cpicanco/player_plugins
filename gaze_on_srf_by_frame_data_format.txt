@@ -7,16 +7,25 @@
 	# if the gaze was inside the surface
 	'on_srf': True,
 
-	# base data to the cv2.perspectiveTransform at offline_reference_surface._on_srf_by_frame_index
+	# base data entered in the cv2.perspectiveTransform at offline_reference_surface._on_srf_by_frame_index
+	# The gaze point that 'gaze_on_surf' is referring to. 
 	'base':
 		{
 			# the timestamp of the frame associated with the gaze
 			'timestamp': 4271.1251454290004,
 
-			# pupil detection confidence
+			# index of the frame associated with the gaze coordenate
+			'index': 0,
+
+			# The normalised position of the gaze point in the world video.
+			'norm_pos': [0.46739029643213748, 0.41818694680264912]
+
+			# detection confidence of the gaze point
+			# in case of binocular eye tracking this is the average confidence of left and right eye.
 			'confidence': 1.0,
 
-			# base data to the cv2.perpectiveTransform at ?
+			# base data entered to the correlate
+			# The pupil point that the gaze point is calculated from. 
 			'base':
 				[{
 					# index of the frame associated with the gaze coordenate
@@ -31,17 +40,11 @@
 					# the timestamp of the frame associated with the gaze
 					'timestamp': 4271.1251454290004,
 
-					# ?
+					# The normalized position of the pupil in the eye video 
 					'norm_pos': [0.5893456697463989, 0.60578858057657881],
 
-					# marker id's associated with the surface
+					# eye id 
 					'id': 0.0
-				}],
-
-			# index of the frame associated with the gaze coordenate
-			'index': 0,
-
-			# normalized pupil position
-			'norm_pos': [0.46739029643213748, 0.41818694680264912]
+				}]
 		}
 }
