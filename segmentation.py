@@ -152,7 +152,8 @@ class Segmentation(Plugin):
         self.v_pad = self.padding * 1./h
 
     def update(self,frame,events):
-        self.frame_index = frame.index
+        if self.frame_index != frame.index:
+            self.frame_index = frame.index
 
     def gl_display(self):
         glMatrixMode(GL_PROJECTION)
