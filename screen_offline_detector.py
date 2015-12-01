@@ -226,15 +226,15 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
         self.update_gui_markers()
 
-    def update(self,frame,events):
-        super(Offline_Screen_Detector, self).update(frame, events)
-        # locate surfaces
-        for s in self.surfaces:
-            if not s.locate_from_cache(frame.index):
-                s.locate(self.markers)
-        #     if s.detected:
-        #         pass
-        #         # events.append({'type':'marker_ref_surface','name':s.name,'uid':s.uid,'m_to_screen':s.m_to_screen,'m_from_screen':s.m_from_screen, 'timestamp':frame.timestamp,'gaze_on_srf':s.gaze_on_srf})
+    # def update(self,frame,events):
+    #     super(Offline_Screen_Detector, self).update(frame, events)
+    #     # locate surfaces
+    #     for s in self.surfaces:
+    #         if not s.locate_from_cache(frame.index):
+    #             s.locate(self.markers)
+    #     #     if s.detected:
+    #     #         pass
+    #     #         # events.append({'type':'marker_ref_surface','name':s.name,'uid':s.uid,'m_to_screen':s.m_to_screen,'m_from_screen':s.m_from_screen, 'timestamp':frame.timestamp,'gaze_on_srf':s.gaze_on_srf})
 
 
     def recalculate(self):
