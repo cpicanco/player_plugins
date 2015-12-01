@@ -60,6 +60,28 @@ class KMeans_Gaze_Correction(Plugin):
             self.notify_all({'subject':'gaze_positions_changed'})
 
     def _get_bias_by_frame(self):
+        def locate_m_to_screen(surface,frame_idx):
+            m_to_screen = None
+            cache = surface.cache[frame_idx]
+            if cache == False: #cached data not avaible for this frame
+                return False
+            elif cache == None: #cached data shows surface not found:
+                return False
+            else:
+                m_to_screen = cache['m_to_screen']
+            return m_to_screen
+
+        def surface_to_screen(pos, m_to_screen):
+            if m_to_screen is not None:
+                #convenience lines to allow 'simple' vectors (x,y) to be used
+                shape = pos.shape
+                pos.shape = (-1,1,2)
+                new_pos = cv2.perspectiveTransform(pos,m_to_screen)
+                new_pos.shape = shape
+                return new_pos
+            else:
+                return None
+
         # load dependencies
         bias_along_blocks = None   
         if self.screen_detector.surfaces:
@@ -106,14 +128,17 @@ class KMeans_Gaze_Correction(Plugin):
         for f in range(len(self.g_pool.gaze_positions_by_frame)):
             for i in range(len(self.g_pool.gaze_positions_by_frame[f])):
                 if len(bias_by_frame[f][i]) == 2:
-                    bias_by_frame[f][i] = normalize(bias_by_frame[f][i], (x_size,y_size))
-                    bias_by_frame[f][i] = s.ref_surface_to_img(np.array(bias_by_frame[f][i]))
+                    bias_by_frame[f][i] = normalize(bias_by_frame[f][i], (x_size,y_size), True)
+                    #bias_by_frame[f][i] = s.ref_surface_to_img(np.array(bias_by_frame[f][i]))
+                    
+                    #m_to_screen = locate_m_to_screen(s, f)
+                    #bias_by_frame[f][i] = surface_to_screen(np.array(bias_by_frame[f][i]), m_to_screen)
+                    #bias_by_frame[f][i] = bias_by_frame[f][i]
                     last_bias = bias_by_frame[f][i]
                 else:
                     # finally, we apply the bias correction to all gaze, not only to the filtered ones
                     bias_by_frame[f][i] = last_bias
         self.bias_by_frame = bias_by_frame
-        print self.bias_by_frame[0:10]
         return True
 
     def _set_gaze_correction(self):
@@ -132,7 +157,7 @@ class KMeans_Gaze_Correction(Plugin):
                     not_corrected += 1
 
         if not_corrected > 0:
-            logger.error('{0} gaze points were not corrected. This is bad.'.format(not_corrected))
+            logger.info('{0} gaze points were not corrected. The higher the worse.'.format(not_corrected))
         self.notify_all_delayed({'subject':'gaze_positions_changed'})
 
     def gaze_correction(self):
