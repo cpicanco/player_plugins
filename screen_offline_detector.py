@@ -52,12 +52,9 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
     Both caches are build up over time. The marker cache is also session persistent.
     See marker_tracker.py for more info on this marker tracker.
     """
-
     def __init__(self,g_pool,mode="Show Screen"):
         super(Offline_Screen_Detector, self).__init__(g_pool)
-        self.g_pool = g_pool
-        # we need to override self.surface inherited values
-        self.init_surfaces()
+        #self.g_pool = g_pool
 
         # heatmap
         self.heatmap_blur = True
@@ -66,7 +63,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.gaze_correction_min_confidence = 0.98
         self.gaze_correction_k = 2
 
-    def init_surfaces(self):
+    def load_surface_definitions_from_file(self):
         self.surface_definitions = Persistent_Dict(os.path.join(self.g_pool.rec_dir,'surface_definitions'))
         if self.surface_definitions.get('offline_square_marker_surfaces',[]) != []:
             logger.debug("Found ref surfaces defined or copied in previous session.")
@@ -176,7 +173,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.elements[:] = []
         self.menu.append(ui.Button('Close',self.close))
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
-        self.menu.append(ui.Selector('mode',self,label='Mode',selection=["Show Markers and Frames","Show marker IDs", "Surface edit mode","Show Heatmaps","Show Gaze Cloud", "Show Gaze Correction","Show Metrics"] ))
+        self.menu.append(ui.Selector('mode',self,label='Mode',selection=["Show Markers and Frames","Show marker IDs", "Surface edit mode","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
         self.menu.append(ui.Info_Text('To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
         self.menu.append(ui.Button("(Re)-calculate gaze distributions",self.recalculate))
         self.menu.append(ui.Button("Add screen surface",lambda:self.add_surface('_')))
@@ -184,7 +181,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
         self.menu.append(ui.Text_Input('gaze_correction_block_size',self,label='Block Size'))
         self.menu.append(ui.Slider('gaze_correction_min_confidence',self,min=0.0,step=0.01,max=1.0,label='Minimun gaze confidence'))
-        self.menu.append(ui.Slider('gaze_correction_k',self,min=2,step=1,max=24,label='K clusters'))
+        self.menu.append(ui.Slider('gaze_correction_k',self,min=1,step=1,max=24,label='K clusters'))
 
         self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
         self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
@@ -214,7 +211,6 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
     def add_surface(self,_):
         self.surfaces.append(Offline_Reference_Surface_Extended(self.g_pool))
-        self.surfaces.append(Offline_Reference_Surface_Extended(self.g_pool))
 
         self.surfaces[0].name = 'Screen'
         self.surfaces[0].real_world_size['x'] = 1280
@@ -229,6 +225,17 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         # self.surfaces[1].real_world_size['y'] = 768
 
         self.update_gui_markers()
+
+    def update(self,frame,events):
+        super(Offline_Screen_Detector, self).update(frame, events)
+        # locate surfaces
+        for s in self.surfaces:
+            if not s.locate_from_cache(frame.index):
+                s.locate(self.markers)
+        #     if s.detected:
+        #         pass
+        #         # events.append({'type':'marker_ref_surface','name':s.name,'uid':s.uid,'m_to_screen':s.m_to_screen,'m_from_screen':s.m_from_screen, 'timestamp':frame.timestamp,'gaze_on_srf':s.gaze_on_srf})
+
 
     def recalculate(self):
         super(Offline_Screen_Detector, self).recalculate()
@@ -246,6 +253,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
                 s.gaze_correction_k = self.gaze_correction_k
                 s.generate_gaze_correction(section)
+                s.generate_mean_correction(section)
 
     def gl_display(self):
         """
@@ -257,9 +265,13 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             for s in self.surfaces:
                 s.gl_display_gaze_cloud()
 
-        if self.mode == "Show Gaze Correction":
+        if self.mode == "Show Kmeans Correction":
             for s in self.surfaces:
                 s.gl_display_gaze_correction()
+
+        if self.mode == "Show Mean Correction":
+            for s in self.surfaces:
+                s.gl_display_mean_correction()
 
     def export_all_sections(self):
         for section in self.g_pool.trim_marks.sections:
