@@ -150,7 +150,7 @@ class Vis_Circle_On_Contours(Plugin):
 
 
         # we need denormalized points for point polygon tests    
-        pts = [denormalize(pt['norm_gaze'],frame.img.shape[:-1][::-1],flip_y=True) for pt in events['pupil_positions'] if pt['norm_gaze'] is not None]
+        pts = [denormalize(pt['norm_pos'],frame.img.shape[:-1][::-1],flip_y=True) for pt in events.get('gaze_positions',[])]
            
         if ellipses:
             # get area of all ellipses
@@ -263,6 +263,7 @@ class Vis_Circle_On_Contours(Plugin):
         self.menu.configuration = self.menu_conf
         # add menu to the window
         self.g_pool.gui.append(self.menu)
+        self.menu.append(ui.Button('Close', self.unset_alive))
         self.menu.append(ui.Info_Text('Circle Properties'))
         self.menu.append(ui.Slider('radius',self,min=1,step=1,max=100,label='Radius'))
         self.menu.append(ui.Slider('thickness',self,min=1,step=1,max=15,label='Stroke width'))
@@ -287,8 +288,6 @@ class Vis_Circle_On_Contours(Plugin):
         color_menu.append(ui.Slider('a',self,min=0.0,step=0.05,max=1.0,label='Alpha'))
 
         self.menu.append(color_menu)
-
-        self.menu.append(ui.Button('remove', self.unset_alive))
 
     def deinit_gui(self):
         if self.menu:
