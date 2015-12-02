@@ -276,9 +276,14 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
     def export_all_sections(self):
         for section in self.g_pool.trim_marks.sections:
             self.g_pool.trim_marks.focus = self.g_pool.trim_marks.sections.index(section)
+            in_mark = self.g_pool.trim_marks.in_mark
+            out_mark = self.g_pool.trim_marks.out_mark
+            metrics_dir = os.path.join(self.g_pool.rec_dir,"metrics_%s-%s"%(in_mark,out_mark))
+
             self.recalculate()
             self.save_surface_statsics_to_file()
             for s in self.surfaces:
+                surface_name = '_'+s.name.replace('/','')+'_'+s.uid
                 if s.heatmap is not None:
                     logger.info("Saved Heatmap as .png file.")
                     cv2.imwrite(os.path.join(metrics_dir,'heatmap'+surface_name+'.png'),s.heatmap)
