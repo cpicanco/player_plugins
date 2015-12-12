@@ -97,8 +97,8 @@ class Screen_Detector(Marker_Detector):
                                                     visualize=0,
                                                     true_detect_every_frame=3)
             else:
-                self.markers = detect_screens(gray,
-                                                grid_size = 5)
+                self.markers = detect_screens(gray)
+                                                #grid_size = 5,
                                                 #min_marker_perimeter=self.min_marker_perimeter,
                                                 #aperture=self.aperture,
                                                 #visualize=0)

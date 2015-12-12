@@ -13,12 +13,14 @@ from pyglui import ui
 
 from plugin import Plugin
 
+blue, green, red = 0, 1, 2
+
 class Filter_Opencv_Threshold(Plugin):
     """
         Apply cv2.threshold in each channel of the (world) frame.img
     """
     uniqueness = "not_unique"
-    def __init__(self, g_pool, threshold=177, thresh_mode="BINARY"):
+    def __init__(self, g_pool, threshold=177, thresh_mode="BINARY", otsu=False):
         super(Filter_Opencv_Threshold, self).__init__(g_pool)
         # run before all plugins
         self.order = .1
@@ -29,11 +31,13 @@ class Filter_Opencv_Threshold(Plugin):
         # filter properties
         self.threshold = threshold
         self.thresh_mode = thresh_mode
+        self.otsu = otsu
 
     def update(self,frame,events):
-        blue, green, red = 0, 1, 2
-        
         # thresh_mode
+        if self.thresh_mode == "NONE":
+            return
+
         if self.thresh_mode == "BINARY":
             cv2_thresh_mode = cv2.THRESH_BINARY
 
@@ -46,7 +50,10 @@ class Filter_Opencv_Threshold(Plugin):
         if self.thresh_mode == "TOZERO":
             cv2_thresh_mode = cv2.THRESH_TOZERO
 
-        # apply the threshold to each channel 
+        if self.otsu:
+            cv2_thresh_mode = cv2_thresh_mode + cv2.THRESH_OTSU
+
+        # apply the threshold to each channel
         for i, channel in enumerate((frame.img[:,:,blue], frame.img[:,:,green], frame.img[:,:,red])):
           retval, edg = cv2.threshold(channel, self.threshold, 255, cv2_thresh_mode)
           frame.img[:,:,i] = edg
@@ -61,7 +68,8 @@ class Filter_Opencv_Threshold(Plugin):
         # append elements to the menu
         self.menu.append(ui.Button('remove',self.unset_alive))
         self.menu.append(ui.Info_Text('Filter Properties'))
-        self.menu.append(ui.Selector('thresh_mode',self,label='Thresh Mode',selection=["BINARY","BINARY_INV", "TRUNC","TOZERO"] ))
+        self.menu.append(ui.Selector('thresh_mode',self,label='Thresh Mode',selection=["NONE","BINARY","BINARY_INV", "TRUNC","TOZERO"] ))
+        self.menu.append(ui.Switch('otsu',self,label='Otsu'))
         self.menu.append(ui.Slider('threshold',self,min=0,step=1,max=255,label='Threshold'))
 
     def deinit_gui(self):
@@ -74,7 +82,7 @@ class Filter_Opencv_Threshold(Plugin):
 
     def get_init_dict(self):
         # persistent properties throughout sessions
-        return {'threshold':self.threshold, 'thresh_mode':self.thresh_mode}
+        return {'threshold':self.threshold, 'thresh_mode':self.thresh_mode, 'otsu':self.otsu}
 
     def cleanup(self):
         """ called when the plugin gets terminated.
