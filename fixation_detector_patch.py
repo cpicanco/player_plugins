@@ -19,12 +19,12 @@ class Dispersion_Duration_Fixation_Detector_Extended(Dispersion_Duration_Fixatio
     '''
         Extend Dispersion_Duration_Fixation_Detector to export multi sections.
     '''
-    def __init__(self,g_pool,max_dispersion = 1.0,min_duration = 0.15,h_fov=78, v_fov=50,show_fixations = False):
+    def __init__(self,g_pool,max_dispersion = 1.0,min_duration = 0.15,h_fov=64, v_fov=36,show_fixations = True):
         super(Dispersion_Duration_Fixation_Detector_Extended, self).__init__(g_pool)
 
 
     def init_gui(self):
-        self.menu = ui.Scrolling_Menu('Fixation Detector')
+        self.menu = ui.Scrolling_Menu('Fixation Detector (Patch')
         self.g_pool.gui.append(self.menu)
 
         def set_h_fov(new_fov):
