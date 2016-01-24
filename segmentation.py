@@ -26,6 +26,18 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING) 
 
+class TrialContainer(object):
+    def __init__(self):
+        self.Angle = None
+        self.ExpectedResponse = None
+        self.TimeEvents = []
+        self.Timestamps = []
+        # self.GazePoints = []
+        # self.CirPoints = []
+        # self.CirRanking = []
+        # self.CirAPoints = []
+        # self.CirBPoints = []
+
 class Segmentation(Plugin):
     """
     The user can manually create events by pressing
@@ -34,10 +46,10 @@ class Segmentation(Plugin):
     This plugin will display vertical bars at the bottom seek bar
     based on those events.
 
-    One should be able send those events
+    One should be able to send those events
     as sections to the trim_marks plugin (auto-trim).
 
-    The auto-trim functionality include two options:
+    The auto-trim functionality includes two options:
     - example events = list(1, 50, 100, 150)
     - chain
       - would return the following sections[(1,50), (51,100), (101, 150)]
@@ -51,7 +63,7 @@ class Segmentation(Plugin):
     """
     def __init__(self, g_pool, custom_events=[], mode='chain', keep_create_order=True):
         super(Segmentation, self).__init__(g_pool)
-        
+
         # Pupil Player system configs
         self.trim_marks = g_pool.trim_marks
         self.order = .8
@@ -71,7 +83,8 @@ class Segmentation(Plugin):
         self.menu = None
         self.mode = mode
         self.keep_create_order = keep_create_order
-  
+
+
         # persistence
         self.custom_events_path = path.join(self.g_pool.rec_dir,'custom_events.npy')
         try:
@@ -84,7 +97,142 @@ class Segmentation(Plugin):
                 logger.warning("No chached events were found.")
             else:
                 logger.warning("Using chached events. Please, save them if necessary. Otherwise, if you close Segmentation plugin those events will be lost.")
- 
+
+        # stimulus control application data
+        self.scapp_output = None
+        self.load_scapp_output()
+        self.scapp_report = None
+        self.load_scapp_report()
+
+        # todo: find a way to load these properties dinamically based on column names
+        self.expected_response = '0'
+        self.filter_by_expresp = True
+
+        self.angle = '0'
+        self.filter_by_angle = True
+
+    def load_scapp_output(self): # timestamps of scapp events
+        """
+        __________________________________________________________
+
+        dependency: validy self.g_pool.rec_dir + '\scapp_output' path
+        __________________________________________________________
+
+
+        - scapp is an acronymous for Stimulus Control Application
+        
+        - scapp_output has the following format:
+            
+            (Trial_No, timestamp, event:session_time)
+
+          where:
+            - 'Trial_No' is the trial number as in scapp_report
+            - 'timestamp' is the timestamps sent by Pupil Server and received by scapp Client
+            - 'event is an scapp event, now there are four types:
+                - S  : Starter onset | Trial onset | ITI ending
+                - *R : first response after S | Starter ending
+                - R  : responses after *R
+                - C  : Consequence onset | Trial ending | ITI onset
+                - session_time is event occurence time in ms from the session onset.
+
+        > examples:
+        > scapp_output 
+            ('1', '232.5674', 'S:029367')
+            ('1', '232.5675', '*R:029368')
+            ('1', '232.5676', 'C:029369')
+            ('2', '232.5684', 'S:029377')
+            ('2', '232.5685', '*R:029378')
+            ('2', '232.5686', 'R:029379')
+            ('2', '232.5687', 'C:029380')
+     
+        > scapp_output loaded
+            [  [ ('232.5674', 'S:029367'), ('232.5675', '*R:029368'), ('232.5676', 'C:029369') ],
+               [ ('232.5684', 'S:029377'), ('232.5685', '*R:029378'), ('232.5686', 'R:029379'), ('232.5687', 'C:029380') ]  ]
+
+        """
+        scapp_output_path = path.join(self.g_pool.rec_dir,'scapp_output')      
+        if path.isfile(scapp_output_path):
+            self.scapp_output = [[]]
+            with open(scapp_output_path, 'r') as scapp_output:
+                for line in scapp_output:
+                    (trial_no, timestamp, event) = literal_eval(line)
+
+                    i = int(trial_no)
+
+                    if i > len(self.scapp_output):
+                        self.scapp_output.append([])
+                    self.scapp_output[i - 1].append((timestamp, event))
+        else:
+            logger.warning("File not found: "+ scapp_output_path)
+
+    def load_scapp_report(self):
+        """
+        __________________________________________________________
+        
+        dependency: validy self.g_pool.rec_dir + '\scapp_report' path
+
+        report_type: string | 'fpe', 'eos'
+        __________________________________________________________
+
+        
+
+           Source Header Names for Feature Positive Effect (fpe) trials:
+           
+           Trial_No : Trial increment number (unique).              (INT)
+           Trial_Id : Trial identification number (can repeat).     (INT)
+           TrialNam : Trial String Name.                            (STR)
+           ITIBegin : Consequence / Inter Trial Interval onset.     (TIME)
+           __ITIEnd : Starter begin / End of Inter Trial Interval   (TIME)
+           StartLat : Latency of the starter response.              (TIME)
+           StmBegin : Trial stimulus/stimuli onset.                 (TIME)
+           _Latency : Latency.                                      (TIME)
+           __StmEnd : End of the stimulus/stimuli removal.          (TIME)
+
+           ExpcResp : Expected response / Contingency.              (STR)
+                Positiva
+                Negativa
+           __Result : Type of the Response emmited.                 (STR)
+                MISS
+                HIT
+                NONE
+           RespFreq : Number of responses emmited                   (INT)
+
+
+
+           Source Header Names for Eye Orientation Study (eos) trials:
+
+           Trial_No : idem
+           Trial_Id : idem
+           TrialNam : idem
+           ITIBegin : idem
+           __ITIEnd : idem
+           StmBegin : idem
+           _Latency : idem
+           __StmEnd : idem
+           ___Angle : Angle                                          (STR)
+                0, 45, 90, 135
+           ______X1 : left 1
+           ______Y1 : top 1
+           ______X2 : left 2
+           ______Y2 : top 2
+           ExpcResp : Expected response
+                0 = no gap/false
+                1 = gap/true
+           RespFreq : idem
+
+           All time variables are in miliseconds. Counting started
+            at the beginning of the session.
+        """
+        scapp_report_path = path.join(self.g_pool.rec_dir,'scapp_report')
+        if path.isfile(scapp_report_path):
+            self.scapp_report = np.genfromtxt(scapp_report_path,
+                delimiter="\t", missing_values=["NA"], skip_header=6, skip_footer=1,
+                filling_values=None, names=True, deletechars='_', autostrip=True,
+                dtype=None)
+
+        else:
+            logger.warning("File not found: "+ scapp_report_path)
+
     def event_undo(self, arg):
         if self.custom_events:
             self.custom_events.pop()
@@ -98,7 +246,7 @@ class Segmentation(Plugin):
                 if not self.keep_create_order:
                     self.custom_events = sorted(self.custom_events, key=int)
 
-    def save_custom_event(self):  
+    def save_custom_events(self):  
         np.save(self.custom_events_path,np.asarray(self.custom_events))
 
     def auto_trim(self):
@@ -132,19 +280,85 @@ class Segmentation(Plugin):
         self.menu = ui.Scrolling_Menu('Segmentation')
         # add ui elements to the menu
         self.menu.append(ui.Button('Close', self.unset_alive))
-        self.menu.append(ui.Info_Text('You can create custom events by pressing "v". To undo press ", (comma)". Remember to save them when your were done.'))
+        self.menu.append(ui.Info_Text('You can create custom events by pressing "v". To undo press ", (comma)". Remember to save them when your were done.')) 
         self.menu.append(ui.Switch('keep_create_order',self,label="Keep Creation Order"))
         # maybe thumbs instead keyboard keys?
         self.menu.append(ui.Hot_Key('create_event',setter=self.create_custom_event,getter=lambda:True,label='V',hotkey=GLFW_KEY_V))
         self.menu.append(ui.Hot_Key('event_undo',setter=self.event_undo,getter=lambda:True,label=',',hotkey=GLFW_KEY_COMMA))
-        self.menu.append(ui.Button('Save Events',self.save_custom_event))
+        self.menu.append(ui.Button('Save Events',self.save_custom_events))
+        self.menu.append(ui.Button('Clean All Events',self.clean_custom_events))
         self.menu.append(ui.Info_Text('You can auto-trim based on avaiable events. Choose the Trim Mode that fit your needs.'))
         self.menu.append(ui.Selector('mode',self,label='Trim Mode',selection=['chain','in out pairs'] )) 
         self.menu.append(ui.Button('Auto-trim',self.auto_trim))
 
+        # todo: for each column, load filters dinamically based on filtered lines (after removing repetition) 
+        # first guess is to use switchs
+        # in order to allow easy to add/remove a filter, but a long list of switchs would not be good
+
+
+        s_menu = ui.Growing_Menu("Filters")
+        s_menu.collapsed=True
+        s_menu.append(ui.Switch('filter_by_angle',self,label="by Angle"))
+        s_menu.append(ui.Selector('angle',self,label='Angles',selection=['0', '45', '90', '135'] ))
+        s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
+        s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=['0', '1'] ))
+        s_menu.append(ui.Button('Add Events',self.add_filtered_events))
+        # self.menu.append(ui.Info_Text('Dispersion'))
+        # 0, 1, 2, 3, 4 .. n
+
+        self.menu.append(s_menu)
+
         # add menu to the window
         self.g_pool.gui.append(self.menu)
         self.on_window_resize(glfwGetCurrentContext(),*glfwGetWindowSize(glfwGetCurrentContext()))
+
+    def trial_from_timestamp(self, timestamp):
+        """
+        timestamp: float
+        Returns the nearest trial index associated with a given timestamp.
+        """
+        for i, trial in enumerate(self.scapp_output):
+            trial_begin = float(trial[0][0])
+            trial_end = float(trial[-1][0])
+            if np.logical_and(trial_end >= timestamp, timestamp >= trial_begin):
+            #if trial_end >= timestamp >= trial_begin:
+                return i
+
+    def clean_custom_events(self):
+        self.custom_events = []
+
+    def add_filtered_events(self):
+        # create a container with the size of the total trials
+        Trials = [TrialContainer() for _ in self.scapp_output]
+
+        # fill it with some data
+        for n, trial in enumerate(Trials):
+            trial.ExpectedResponse = self.scapp_report[n]['ExpcResp']
+            trial.Angle = str(self.scapp_report[n]['Angle'])
+            trial.TimeEvents = self.scapp_output[n]
+
+            # find frame of correspondent event (firstResponse, starter onset...)
+            firstResponse = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[1][0])).argmin()
+            endLimitedHold = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[-1][0])).argmin()
+
+            # add frames to the custom events list
+            filtering_conditions = []
+            if self.filter_by_expresp:
+                filtering_conditions.append(str(trial.ExpectedResponse) == self.expected_response)
+
+            if self.filter_by_angle:
+                filtering_conditions.append(trial.Angle == self.angle)
+         
+            if filtering_conditions != []:
+                if all(filtering_conditions):
+                    self.custom_events.append(firstResponse)
+                    self.custom_events.append(endLimitedHold)
+            else:
+                logger.warning("Check at least one filter condition before adding events.")
+                
+            # 2 seconds interval
+            # frameInterval = range(firstResponse, endLimitedHold)
+            # print firstResponse, endLimitedHold
 
     def on_window_resize(self,window,w,h):
         self.window_size = w,h
