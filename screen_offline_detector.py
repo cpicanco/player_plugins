@@ -174,8 +174,10 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.append(ui.Button('Close',self.close))
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
         self.menu.append(ui.Selector('mode',self,label='Mode',selection=["Show Markers and Frames","Show marker IDs", "Surface edit mode","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
-        self.menu.append(ui.Info_Text('To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
+        self.menu.append(ui.Info_Text('Select a section. To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
         self.menu.append(ui.Button("(Re)-calculate gaze distributions",self.recalculate))
+        self.menu.append(ui.Info_Text('To use data from all sections to generate visualizations click the next button instead.'))
+        self.menu.append(ui.Button("(Re)-calculate",self.recalculate_all_sections))
         self.menu.append(ui.Button("Add screen surface",lambda:self.add_surface('_')))
 
         self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
@@ -254,6 +256,38 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 s.gaze_correction_k = self.gaze_correction_k
                 s.generate_gaze_correction(section)
                 s.generate_mean_correction(section)
+
+    def recalculate_all_sections(self):
+        """
+            treats all sections as one
+            should not be used to overlaid sections
+        """
+        # for now, it requires trim_marks_patch.py
+        sections_alive = False
+        for p in self.g_pool.plugins:
+            if p.class_name == 'Trim_Marks_Extended':
+                sections_alive = True
+
+        if sections_alive:
+            sections = self.g_pool.trim_marks.sections     
+            for s in self.surfaces:
+                if s.defined:
+                    # assign user defined variables
+                    s.heatmap_blur = self.heatmap_blur
+                    s.heatmap_blur_gradation = self.heatmap_blur_gradation
+                    s.gaze_correction_block_size = self.gaze_correction_block_size
+                    s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
+                    s.gaze_correction_k = self.gaze_correction_k
+                    
+                    # generate visualizations
+                    s.generate_heatmap(sections, True)
+                    s.generate_gaze_cloud(sections, True)
+
+            logger.info("Recalculate visualizations done.")
+                    
+        else:
+            logger.error("Trim_Marks_Extended not found. Have you opened it?")
+
 
     def gl_display(self):
         """

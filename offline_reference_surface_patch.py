@@ -170,7 +170,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             glfwSwapBuffers(self._window)
             glfwMakeContextCurrent(active_window)
 
-    def generate_heatmap(self,section):
+    def generate_heatmap(self,section, use_all_sections=False):
         if self.cache is None:
             logger.warning('Surface cache is not build yet.')
             return
@@ -185,11 +185,23 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         all_gaze = []
 
-        for frame_idx,c_e in enumerate(self.cache[section]):
-            if c_e:
-                frame_idx+=section.start
-                for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
-                    all_gaze.append(gp['norm_pos'])
+        if use_all_sections: # 'section' becomes 'trim_marks.sections' 
+            for sec in section:
+                in_mark = sec[0]
+                out_mark = sec[1]
+                sec = slice(in_mark,out_mark)
+                for frame_idx,c_e in enumerate(self.cache[sec]):
+                    if c_e:
+                        frame_idx+=sec.start
+                        for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+                            all_gaze.append(gp['norm_pos'])
+
+        else:  # 'section' becomes 'slice' of current selected section 
+            for frame_idx,c_e in enumerate(self.cache[section]):
+                if c_e:
+                    frame_idx+=section.start
+                    for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+                        all_gaze.append(gp['norm_pos'])
 
         if not all_gaze:
             logger.warning("No gaze data on surface for heatmap found.")
@@ -251,7 +263,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.heatmap_texture = Named_Texture()
         self.heatmap_texture.update_from_ndarray(self.heatmap)
 
-    def generate_gaze_cloud(self,section):
+    def generate_gaze_cloud(self,section,use_all_sections=False):
         if self.cache is None:
             logger.warning('Surface cache is not build yet.')
             return
@@ -259,11 +271,24 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         x_size, y_size = self.real_world_size['x'], self.real_world_size['y']
 
         all_gaze = []
-        for frame_idx,c_e in enumerate(self.cache[section]):
-            if c_e:
-                frame_idx+=section.start
-                for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
-                    all_gaze.append(gp['norm_pos'])
+
+        if use_all_sections:
+            for sec in section:
+                in_mark = sec[0]
+                out_mark = sec[1]
+                sec = slice(in_mark,out_mark)        
+                for frame_idx,c_e in enumerate(self.cache[sec]):
+                    if c_e:
+                        frame_idx+=sec.start
+                        for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+                            all_gaze.append(gp['norm_pos'])
+
+        else:    
+            for frame_idx,c_e in enumerate(self.cache[section]):
+                if c_e:
+                    frame_idx+=section.start
+                    for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+                        all_gaze.append(gp['norm_pos'])
 
         if not all_gaze:
             logger.warning("No gaze data on surface for gaze cloud found.")
@@ -284,7 +309,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         all_gaze_float = np.float32(all_gaze_flipped)
 
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        _,_,centers = cv2.kmeans(all_gaze_float,2,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
+        _,_,centers = cv2.kmeans(all_gaze_float,self.gaze_correction_k,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
         for c in centers:
             #print c
             cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
@@ -395,7 +420,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             cv2.circle(img, (int(g[0]),int(g[1])), 3, (0, 0, 0), 0)
 
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-        _,_,centers = cv2.kmeans(unbiased_gaze.astype('float32'),2,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
+        _,_,centers = cv2.kmeans(unbiased_gaze.astype('float32'),self.gaze_correction_k,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
 
         for c in centers:
              cv2.circle(img, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
