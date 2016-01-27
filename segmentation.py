@@ -101,8 +101,12 @@ class Segmentation(Plugin):
         # stimulus control application data
         self.scapp_output = None
         self.load_scapp_output()
+
         self.scapp_report = None
         self.load_scapp_report()
+
+        self.scapp_output_npy = None
+        self.load_scapp_output_npy()
 
         # todo: find a way to load these properties dinamically based on column names
         self.expected_response = '0'
@@ -110,6 +114,28 @@ class Segmentation(Plugin):
 
         self.angle = '0'
         self.filter_by_angle = True
+
+        self.color = 'red'
+
+    def load_scapp_output_npy(self):
+        scapp_output_path = path.join(self.g_pool.rec_dir,"scapp_output.npy")
+        if not path.isfile(scapp_output_path):
+            logger.warning("File not found: "+ scapp_output_path)
+            return
+
+        scapp_output = np.load(scapp_output_path)
+        self.scapp_output_npy = [[]]
+        for line in scapp_output:
+            trial_no = line[0] 
+            timestamp = line[1]
+            event = line[2]
+
+            i = int(trial_no)
+
+            if i > len(self.scapp_output_npy):
+                self.scapp_output_npy.append([])
+            self.scapp_output_npy[i - 1].append((timestamp, event))
+
 
     def load_scapp_output(self): # timestamps of scapp events
         """
@@ -171,7 +197,7 @@ class Segmentation(Plugin):
         
         dependency: validy self.g_pool.rec_dir + '\scapp_report' path
 
-        report_type: string | 'fpe', 'eos'
+        report_type: string | 'fpe', 'eos', 'vlh'
         __________________________________________________________
 
         
@@ -219,6 +245,21 @@ class Segmentation(Plugin):
                 0 = no gap/false
                 1 = gap/true
            RespFreq : idem
+
+           Source Header Names for Variable Limited Hold Study (vlh) trials:
+
+           Trial_No : idem
+           Trial_Id : idem
+           TrialNam : idem
+           ITIBegin : idem
+           __ITIEnd : idem
+           StmBegin : idem
+           _Latency : idem
+           ___Cycle :
+           __Timer2 :
+           _Version :
+           ____Mode :
+           RespFreq : 
 
            All time variables are in miliseconds. Counting started
             at the beginning of the session.
@@ -291,19 +332,29 @@ class Segmentation(Plugin):
         self.menu.append(ui.Selector('mode',self,label='Trim Mode',selection=['chain','in out pairs'] )) 
         self.menu.append(ui.Button('Auto-trim',self.auto_trim))
 
-        # todo: for each column, load filters dinamically based on filtered lines (after removing repetition) 
+        # todo: for each data column, load filters dinamically based on filtered lines (after removing repetition) 
         # first guess is to use switchs
-        # in order to allow easy to add/remove a filter, but a long list of switchs would not be good
+        # in order to allow easy to add/remove a filter, but list of switchs too long would not be good
 
 
         s_menu = ui.Growing_Menu("Filters")
-        s_menu.collapsed=True
+        s_menu.collapsed=False
         s_menu.append(ui.Switch('filter_by_angle',self,label="by Angle"))
         s_menu.append(ui.Selector('angle',self,label='Angles',selection=['0', '45', '90', '135'] ))
         s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
         s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=['0', '1'] ))
         s_menu.append(ui.Button('Add Events',self.add_filtered_events))
-        # self.menu.append(ui.Info_Text('Dispersion'))
+        s_menu.append(ui.Button('Clean, Add, Trim',self.clean_add_trim))
+        self.menu.append(s_menu)
+
+        s_menu = ui.Growing_Menu("Filters 2")
+        s_menu.collapsed=False
+        s_menu.append(ui.Selector('color',self,label='Color',selection=['red', 'blue'] ))
+
+        #s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
+        #s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=['0', '1'] ))
+        s_menu.append(ui.Button('Add Events',self.add_filtered_events_npy))
+        #s_menu.append(ui.Button('Clean, Add, Trim',self.clean_add_trim))        # self.menu.append(ui.Info_Text('Dispersion'))
         # 0, 1, 2, 3, 4 .. n
 
         self.menu.append(s_menu)
@@ -311,6 +362,12 @@ class Segmentation(Plugin):
         # add menu to the window
         self.g_pool.gui.append(self.menu)
         self.on_window_resize(glfwGetCurrentContext(),*glfwGetWindowSize(glfwGetCurrentContext()))
+
+    def clean_add_trim(self):
+        self.clean_custom_events()
+        self.add_filtered_events()
+        self.auto_trim()
+
 
     def trial_from_timestamp(self, timestamp):
         """
@@ -326,6 +383,30 @@ class Segmentation(Plugin):
 
     def clean_custom_events(self):
         self.custom_events = []
+
+    def add_filtered_events_npy(self):
+        def check_last_even():
+            if not (len(self.custom_events) % 2) == 0:                
+                begin = np.abs(self.g_pool.timestamps - np.float64(Trials[len(Trials)-1].TimeEvents[-1][0])).argmin()
+                self.custom_events.append(begin)
+
+        Trials = [TrialContainer() for _ in self.scapp_output_npy]
+        
+        # fill it with data
+        if self.color == 'red':
+            for n, trial in enumerate(Trials):
+                trial.TimeEvents = self.scapp_output_npy[n]
+                begin = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[0][0])).argmin()
+                self.custom_events.append(begin)
+            check_last_even()
+
+        if self.color == 'blue':
+            for n, trial in enumerate(Trials):
+                if n > 0:
+                    trial.TimeEvents = self.scapp_output_npy[n]
+                    begin = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[0][0])).argmin()
+                    self.custom_events.append(begin)
+            check_last_even()
 
     def add_filtered_events(self):
         # create a container with the size of the total trials
