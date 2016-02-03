@@ -240,7 +240,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
 
     def recalculate(self):
-        super(Offline_Screen_Detector, self).recalculate()
+        #super(Offline_Screen_Detector, self).recalculate()
         # calc heatmaps
         in_mark = self.g_pool.trim_marks.in_mark
         out_mark = self.g_pool.trim_marks.out_mark
@@ -256,6 +256,31 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 s.gaze_correction_k = self.gaze_correction_k
                 s.generate_gaze_correction(section)
                 s.generate_mean_correction(section)
+
+# calc distirbution accross all surfaces.
+        results = []
+        for s in self.surfaces:
+            gaze_on_srf  = s.gaze_on_srf_in_section(section)
+            results.append(len(gaze_on_srf))
+            self.metrics_gazecount = len(gaze_on_srf)
+
+        if results == []:
+            logger.warning("No surfaces defined.")
+            return
+        max_res = max(results)
+        results = np.array(results,dtype=np.float32)
+        if not max_res:
+            logger.warning("No gaze on any surface for this section!")
+        else:
+            results *= 255./max_res
+        results = np.uint8(results)
+        results_c_maps = cv2.applyColorMap(results, cv2.COLORMAP_JET)
+
+        for s,c_map in zip(self.surfaces,results_c_maps):
+            heatmap = np.ones((1,1,4),dtype=np.uint8)*125
+            heatmap[:,:,:3] = c_map
+            s.metrics_texture = Named_Texture()
+            s.metrics_texture.update_from_ndarray(heatmap)
 
     def recalculate_all_sections(self):
         """
