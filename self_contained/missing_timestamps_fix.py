@@ -33,8 +33,8 @@ except:
     except IOError, e:
         print e, "using hardcoded paths"
         output_path = "/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/002"
-        scapp_timestamps_path = os.path.join(output_path, "Data_002.timestamps")
-        scapp_vlh_report_path = os.path.join(output_path, "Data_002.txt")
+        scapp_timestamps_path = os.path.join(output_path, "scapp_output.timestamps")
+        scapp_vlh_report_path = os.path.join(output_path, "scapp_report.data")
 
 if not os.path.isfile(scapp_timestamps_path) or not os.path.isfile(scapp_vlh_report_path):
     raise IOError, "Source files were not found."

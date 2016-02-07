@@ -20,7 +20,7 @@ except IndexError, e:
     print "No arguments provided: 1) response timestamps 2) stimuli onset timestamps"
     print e, "using hardcoded paths"
     output_path = "/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/002"
-    timestamps1_path = os.path.join(output_path, "Data_002.timestamps")
+    timestamps1_path = os.path.join(output_path, "scapp_output.timestamps")
     timestamps2_path = os.path.join(output_path, "scapp_output.npy")
 
 if not os.path.isfile(timestamps1_path):

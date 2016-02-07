@@ -176,7 +176,7 @@ class Segmentation(Plugin):
                [ ('232.5684', 'S:029377'), ('232.5685', '*R:029378'), ('232.5686', 'R:029379'), ('232.5687', 'C:029380') ]  ]
 
         """
-        scapp_output_path = path.join(self.g_pool.rec_dir,'scapp_output')      
+        scapp_output_path = path.join(self.g_pool.rec_dir,'scapp_output.timestamps')      
         if path.isfile(scapp_output_path):
             self.scapp_output = [[]]
             with open(scapp_output_path, 'r') as scapp_output:
@@ -264,7 +264,7 @@ class Segmentation(Plugin):
            All time variables are in miliseconds. Counting started
             at the beginning of the session.
         """
-        scapp_report_path = path.join(self.g_pool.rec_dir,'scapp_report')
+        scapp_report_path = path.join(self.g_pool.rec_dir,'scapp_report.data')
         if path.isfile(scapp_report_path):
             self.scapp_report = np.genfromtxt(scapp_report_path,
                 delimiter="\t", missing_values=["NA"], skip_header=6, skip_footer=1,
