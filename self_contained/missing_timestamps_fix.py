@@ -32,8 +32,9 @@ except:
             raise IOError, scapp_vlh_report_path+" not found."
     except IOError, e:
         print e, "using hardcoded paths"
-        scapp_timestamps_path = "/home/rafael/greserved/pupil-o/recordings/2015_05_20/gabriel/007/Data_006.timestamps"
-        scapp_vlh_report_path = "/home/rafael/greserved/pupil-o/recordings/2015_05_20/gabriel/007/Data_006.txt"
+        output_path = "/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/002"
+        scapp_timestamps_path = os.path.join(output_path, "Data_002.timestamps")
+        scapp_vlh_report_path = os.path.join(output_path, "Data_002.txt")
 
 if not os.path.isfile(scapp_timestamps_path) or not os.path.isfile(scapp_vlh_report_path):
     raise IOError, "Source files were not found."
@@ -79,7 +80,7 @@ for n in scapp_report:
         c = not c
         condition = get_condition(c)
     except:
-        print "end"
+        # print "end"
         condition = get_condition(c)+"b"
 
     miss_timestamp = ((n['Cycle'] - int(event.replace("S:","")))/1000)+float(timestamp)
@@ -87,4 +88,4 @@ for n in scapp_report:
 
 for line in output:
     print line
-np.save("scapp_output", output)
+np.save(os.path.join(output_path,"scapp_output"), output)
