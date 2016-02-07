@@ -38,7 +38,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.gaze_on_srf = [] # points on surface for realtime feedback display
 
         self.heatmap_blur = True
-        self.heatmap_blur_gradation = .2
+        self.heatmap_blur_gradation = .15
 
         self.gaze_cloud = None
         self.gaze_cloud_texture = None
@@ -225,6 +225,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         # smoothing
         if self.heatmap_blur:
+            # must be odd
             kernel_size = (int(self.heatmap_blur_gradation * len(x_bin)/2)*2 +1)
             sigma = kernel_size /6.
 
@@ -239,17 +240,17 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         # colormapping
         hist = np.uint8(hist * (scale))
+        #c_map = cv2.applyColorMap(hist, cv2.COLORMAP_HOT)
         c_map = cv2.applyColorMap(hist, cv2.COLORMAP_JET)
 
         # we need a 4 channel image to apply transparency
-        x, y, channels = c_map.shape
-        self.heatmap = np.zeros((x, y, 4), dtype = np.uint8)
-
-        # lets assign the color channels
-        self.heatmap[:, :, :3] = c_map
+        self.heatmap = cv2.cvtColor(c_map, cv2.COLOR_BGR2BGRA)
 
         # alpha blend/transparency
-        self.heatmap[:, :, 3] = 127
+        c_alpha = hist
+        c_alpha[c_alpha>0] = 150
+
+        self.heatmap[:, :, 3] = c_alpha
 
         # here we approximate the image size trying to inventing as less data as possible
         # so resizing with a nearest-neighbor interpolation gives good results
@@ -316,10 +317,11 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         self.output_data = {'gaze':all_gaze_flipped,'kmeans':centers}
 
-        alpha = img.copy()
-        alpha -= .5*255
-        alpha *= -1
-        img[:,:,3] = alpha[:,:,0]
+        alpha = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+        alpha[alpha == 0] = 150
+        alpha[alpha == 255] = 0
+        alpha[alpha > 0] = 150
+        img[:,:,3] = alpha
 
         self.gaze_cloud = img
         self.gaze_cloud_texture = Named_Texture()
@@ -435,10 +437,12 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.output_data['unbiased_kmeans'] = centers
         self.output_data['bias_along_blocks'] = bias_along_blocks
 
-        alpha = img.copy()
-        alpha -= .5*255
-        alpha *= -1
-        img[:,:,3] = alpha[:,:,0]
+        # transparent background; data opacity
+        alpha = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+        alpha[alpha == 0] = 150
+        alpha[alpha == 255] = 0
+        alpha[alpha > 0] = 150
+        img[:,:,3] = alpha
 
         self.gaze_correction = img
         self.gaze_correction_texture = Named_Texture()
@@ -547,10 +551,11 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.output_data['unbiased_gaze_mean'] = unbiased_gaze
         self.output_data['bias_along_blocks_mean'] = bias_along_blocks
 
-        alpha = img.copy()
-        alpha -= .5*255
-        alpha *= -1
-        img[:,:,3] = alpha[:,:,0]
+        alpha = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)
+        alpha[alpha == 0] = 150
+        alpha[alpha == 255] = 0
+        alpha[alpha > 0] = 150
+        img[:,:,3] = alpha
 
         self.mean_correction = img
         self.mean_correction_texture = Named_Texture()
