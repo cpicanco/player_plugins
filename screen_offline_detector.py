@@ -250,14 +250,16 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             if s.defined:
                 s.heatmap_blur = self.heatmap_blur
                 s.heatmap_blur_gradation = self.heatmap_blur_gradation
-                s.generate_gaze_cloud(section)
                 s.gaze_correction_block_size = self.gaze_correction_block_size
                 s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
                 s.gaze_correction_k = self.gaze_correction_k
+
+                s.generate_heatmap(section)
+                s.generate_gaze_cloud(section)
                 s.generate_gaze_correction(section)
                 s.generate_mean_correction(section)
 
-# calc distirbution accross all surfaces.
+        # calc distirbution accross all surfaces.
         results = []
         for s in self.surfaces:
             gaze_on_srf  = s.gaze_on_srf_in_section(section)
@@ -351,6 +353,10 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     logger.info("Saved Gaze Cloud as .png file.")
                     cv2.imwrite(os.path.join(metrics_dir,'gaze_cloud'+surface_name+'.png'),s.gaze_cloud)
 
+                if s.gaze_correction is not None:
+                    logger.info("Saved Gaze Correction as .png file.")
+                    cv2.imwrite(os.path.join(metrics_dir,'gaze_correction'+surface_name+'.png'),s.gaze_correction)
+
                 # lets save out the current surface image found in video
                 seek_pos = in_mark + ((out_mark - in_mark)/2)
                 self.g_pool.capture.seek_to_frame(seek_pos)
@@ -393,7 +399,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 #dst = cv2.addWeighted(src1, .9, src2, .1, 0.0);                
                 #cv2.imwrite(os.path.join(metrics_dir,'surface-heatmap'+surface_name+'.png'),dst)
             
-            self.g_pool.capture.seek_to_frame(current_frame_index)
+            self.g_pool.capture.seek_to_frame(seek_pos)
             logger.info("Done exporting reference surface data.")
 
     def get_init_dict(self):
