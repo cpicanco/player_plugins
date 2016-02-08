@@ -37,17 +37,19 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.cache = None
         self.gaze_on_srf = [] # points on surface for realtime feedback display
 
-        self.heatmap_blur = True
-        self.heatmap_blur_gradation = .15
+        # these vars are set at the screen/marker detector __init__
+        self.heatmap_blur = None
+        self.heatmap_blur_gradation = None
+        self.heatmap_colormap = None
 
         self.gaze_cloud = None
         self.gaze_cloud_texture = None
 
         self.gaze_correction = None
         self.gaze_correction_texture = None
-        self.gaze_correction_block_size = 1000
-        self.gaze_correction_min_confidence = 0.98
-        self.gaze_correction_k = 2
+        self.gaze_correction_block_size = None
+        self.gaze_correction_min_confidence = None
+        self.gaze_correction_k = None
 
         self.mean_correction = None
         self.mean_correction_texture = None
@@ -237,11 +239,19 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             scale = 255./maxval
         else:
             scale = 0
-
-        # colormapping
         hist = np.uint8(hist * (scale))
-        #c_map = cv2.applyColorMap(hist, cv2.COLORMAP_HOT)
-        c_map = cv2.applyColorMap(hist, cv2.COLORMAP_JET)
+        
+        # colormapping
+        colormap = cv2.COLORMAP_JET # just in case the following does not work
+        cv2_colormaps = ['AUTUMN','BONE', 'JET', 'WINTER', 'RAINBOW', 'OCEAN', 'SUMMER', 'SPRING', 'COOL', 'HSV', 'PINK', 'HOT']
+        for i, name in enumerate(cv2_colormaps):
+            if self.heatmap_colormap == name:
+                colormap = i
+                break
+
+
+        c_map = cv2.applyColorMap(hist, colormap)
+        #c_map = cv2.applyColorMap(hist, cv2.COLORMAP_JET)
 
         # we need a 4 channel image to apply transparency
         self.heatmap = cv2.cvtColor(c_map, cv2.COLOR_BGR2BGRA)
