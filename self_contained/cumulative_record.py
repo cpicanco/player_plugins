@@ -101,12 +101,19 @@ if __name__ == '__main__':
 
     paths = [
              "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/001",
-            
-             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/002"
+             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/002",
+             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/001"
             ]
 
     # global vars
-    ymax = 703
+    data = []
+    ymax = []
+    for path in paths:
+        stimuli_by_trial, responses, cumulative, begin, end = load_data_from_path(path)
+        data.append((stimuli_by_trial, responses, cumulative, begin, end))
+        ymax.append(len(responses))
+
+    ymax = np.amax(ymax)
     x_label = 'Time (s)'
     y_label = 'Cumulative Responses'
     title = 'Cumulative Response by Time'
@@ -126,8 +133,8 @@ if __name__ == '__main__':
     figure.text(0.5, 0.02, x_label)
     #figure.text(0.014, 0.5, y_label, rotation='vertical',verticalalignment='center',horizontalalignment='right')
 
-    for i, path in enumerate(paths):
-        stimuli_by_trial, responses, cumulative, begin, end = load_data_from_path(path)
+    for i, d in enumerate(data):
+        (stimuli_by_trial, responses, cumulative, begin, end) = d
         standard_plot(axarr[i])
 
     axarr[0].set_ylabel(y_label)
