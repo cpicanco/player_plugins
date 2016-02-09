@@ -187,7 +187,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.menu.append(ui.Slider('gaze_correction_k',self,min=1,step=1,max=24,label='K clusters'))
 
         if self.mode == 'Show Heatmaps':
-            self.menu.append(ui.Info_Text('Heatmap Configs'))
+            self.menu.append(ui.Info_Text('Heatmap Settings'))
             self.menu.append(ui.Switch('heatmap_blur',self,label='Blur'))
             self.menu.append(ui.Slider('heatmap_blur_gradation',self,min=0.01,step=0.01,max=1.0,label='Blur Gradation'))
             self.menu.append(ui.Selector('heatmap_colormap',self,label='Color Map',selection=['AUTUMN','BONE', 'JET', 'WINTER', 'RAINBOW', 'OCEAN', 'SUMMER', 'SPRING', 'COOL', 'HSV', 'PINK', 'HOT']))
