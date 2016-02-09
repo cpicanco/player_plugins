@@ -6,100 +6,138 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-# plot timestamped events using a cummulative frequency graph
+# plot timestamped events using a cumulative frequency graph
 
 import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 from ast import literal_eval
 
-try:
-    timestamps1_path = sys.argv[0]
-    timestamps2_path = sys.argv[1]
-except IndexError, e:
-    print "No arguments provided: 1) response timestamps 2) stimuli onset timestamps"
-    print e, "using hardcoded paths"
-    output_path = "/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/002"
-    timestamps1_path = os.path.join(output_path, "scapp_output.timestamps")
-    timestamps2_path = os.path.join(output_path, "scapp_output.npy")
+def load_data_from_path(path):
+    timestamps1_path = os.path.join(path, "scapp_output.timestamps")
+    timestamps2_path = os.path.join(path, "scapp_output.npy")
 
-if not os.path.isfile(timestamps1_path):
-    raise IOError, "Source 1 were not found."
+    if not os.path.isfile(timestamps1_path):
+        raise IOError, "Source 1 were not found."
 
-if not os.path.isfile(timestamps2_path):
-    raise IOError, "Source 2 were not found."
+    if not os.path.isfile(timestamps2_path):
+        raise IOError, "Source 2 were not found."
 
-print "responses:",timestamps1_path
-print "stimuli__:",timestamps2_path
+    print "responses:",timestamps1_path
+    print "stimuli__:",timestamps2_path
 
-# load timestamps2, stimuli onset
-timestamps2 = np.load(timestamps2_path)
-stimuli_by_trial = [[]]
-for line in timestamps2:
-    trial_no = line[0] 
-    timestamp = line[1]
-    event = line[2]
+    # load timestamps2, stimuli onset
+    stimuli_by_trial = [[]]
+    timestamps2 = np.load(timestamps2_path)
+    for line in timestamps2:
+        trial_no = line[0] 
+        timestamp = line[1]
+        event = line[2]
 
-    i = int(trial_no)
+        i = int(trial_no)
 
-    if i > len(stimuli_by_trial):
-        stimuli_by_trial.append([])
-    stimuli_by_trial[i - 1].append((timestamp, event))
+        if i > len(stimuli_by_trial):
+            stimuli_by_trial.append([])
+        stimuli_by_trial[i - 1].append((timestamp, event))
 
-# for trial in stimuli_by_trial:
-#     for stimulus in trial:
-#         print "timestamp", stimulus[0]
-#         print "code", stimulus[1]
+    # for trial in stimuli_by_trial:
+    #     for stimulus in trial:
+    #         print "timestamp", stimulus[0]
+    #         print "code", stimulus[1]
 
-begin = stimuli_by_trial[0][0][0]
-end = stimuli_by_trial[-1][-1][0] 
+    begin = stimuli_by_trial[0][0][0]
+    end = stimuli_by_trial[-1][-1][0] 
 
-# load timestamps1, responses
-responses = []
-cummulative = []
-i = 1
-with open(timestamps1_path, 'r') as f:
-    for line in f:
-        (trial_no, timestamp, event) = literal_eval(line)
-        if "R" in event:
-            responses.append(float(timestamp)-float(begin))
-            cummulative.append(i)
-            i += 1
+    # load timestamps1, responses
+    responses = []
+    cumulative = []
+    i = 1
+    with open(timestamps1_path, 'r') as f:
+        for line in f:
+            (trial_no, timestamp, event) = literal_eval(line)
+            if "R" in event:
+                responses.append(float(timestamp)-float(begin))
+                cumulative.append(i)
+                i += 1
 
-ymax = len(responses)
-print "found",ymax,"responses"
+    ymax = len(responses)
+    print ymax, 'responses'
+    return stimuli_by_trial, responses, cumulative, begin, end
+
+def standard_plot(axis):
+    # vertical lines
+    for trial in stimuli_by_trial:
+        xline = float(trial[0][0])-float(begin)
+        if trial[0][1] == '1':
+            if trial == stimuli_by_trial[0]:
+                axis.plot((xline, xline),(0,ymax), 'r--', label='Red Onset')
+            else:
+                axis.plot((xline, xline),(0,ymax), 'r--')
+        if trial[0][1] == '2':
+            if trial == stimuli_by_trial[1]:
+                axis.plot((xline, xline),(0,ymax), 'b:', label='Blue Onset')
+            else:
+                axis.plot((xline, xline),(0,ymax), 'b:')
+
+    # the actual data
+    axis.step(responses, cumulative,color='black',label='Responses')
+
+    # remove frame
+    axis.spines['top'].set_visible(False)
+    axis.spines['bottom'].set_visible(False)
+    axis.spines['left'].set_visible(False)
+    axis.spines['right'].set_visible(False)
+
+    #remove ticks
+    axis.xaxis.set_ticks_position('none')
+    axis.yaxis.set_ticks_position('none') 
+
+
+if __name__ == '__main__':
 
 ###########
 # drawing #
 ###########
 
-figure = plt.figure()
-axes = figure.add_axes([0.1, 0.1, 0.8, 0.8], frameon = 0)
-axes.step(responses, cummulative,color='black')
+    paths = [
+             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/001",
+            
+             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/002"
+            ]
 
-# lets check the results
-x_label = 'Time (s)'
-y_label = 'Cumulative Responses'
-title = 'Cumulative Response by Time'
-axes.set_xlabel(x_label)
-axes.set_ylabel(y_label)
-axes.set_title(title);
-# plt.plot((begin, begin),(0,len(responses)), 'r-')
-# end = float(end)-float(begin)
+    # global vars
+    ymax = 703
+    x_label = 'Time (s)'
+    y_label = 'Cumulative Responses'
+    title = 'Cumulative Response by Time'
 
-for trial in stimuli_by_trial:
-    xline = float(trial[0][0])-float(begin)
-    if trial[0][1] == '1':
-        axes.plot((xline, xline),(0,ymax), 'r:')
-    if trial[0][1] == '2':
-        axes.plot((xline, xline),(0,ymax), 'b:')
+    n_plots = len(paths)
+    if n_plots == 1:
+        figsize = (6, 4)
+    elif n_plots == 2:
+        figsize = (11, 4)
+    else:
+        figsize = (16, 4)
 
-plt.ylim(ymax = ymax, ymin = 0)
-axes.xaxis.set_ticks_position('none')
-axes.yaxis.set_ticks_position('none') 
-plt.show()
+    # figure.add_axes([0.1, 0.1, 0.8, 0.8], frameon = 0)
+    figure, axarr = plt.subplots(1, n_plots, sharey=True, sharex=False, figsize=figsize)
+    #figure.subplots_adjust(wspace=0,bottom=0.15) 
+    figure.suptitle(title);
+    figure.text(0.5, 0.02, x_label)
+    #figure.text(0.014, 0.5, y_label, rotation='vertical',verticalalignment='center',horizontalalignment='right')
 
+    for i, path in enumerate(paths):
+        stimuli_by_trial, responses, cumulative, begin, end = load_data_from_path(path)
+        standard_plot(axarr[i])
 
-# for line in output:
-#     print line
-# np.save(os.path.join(output_path,"scapp_output"), output)
+    axarr[0].set_ylabel(y_label)
+    axarr[0].legend(loc=(0.0,0.735))
+    # axarr[1].set_xlabel(x_label)
+    plt.ylim(ymax = ymax, ymin = 0)
+    figure.tight_layout()
+    plt.show()
+
+    # for line in output:
+    #     print line
+    # plt.savefig('test.png', bbox_inches='tight')
+    # np.save(os.path.join(output_path,"scapp_output"), output)
