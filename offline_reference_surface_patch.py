@@ -41,6 +41,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.heatmap_blur = None
         self.heatmap_blur_gradation = None
         self.heatmap_colormap = None
+        self.heatmap_use_kdata = None
 
         self.gaze_cloud = None
         self.gaze_cloud_texture = None
@@ -176,6 +177,20 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         if self.cache is None:
             logger.warning('Surface cache is not build yet.')
             return
+
+        def add_unbiased_gaze(_):
+            try:
+                for data in self.output_data['unbiased_gaze']:
+                    all_gaze.append(normalize(data['gaze'],(x_size, y_size),flip_y=True)) 
+            except KeyError, e:
+                logger.warning("No unbiased_gaze data was found.",e)
+
+        def add_gaze_on_srf_by_frame(sec):
+            for frame_idx,c_e in enumerate(self.cache[sec]):
+                if c_e:
+                    frame_idx+=sec.start
+                    for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
+                        all_gaze.append(gp['norm_pos'])
             
         # removing encapsulation
         x_bin, y_bin = 1, 1
@@ -192,18 +207,16 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
                 in_mark = sec[0]
                 out_mark = sec[1]
                 sec = slice(in_mark,out_mark)
-                for frame_idx,c_e in enumerate(self.cache[sec]):
-                    if c_e:
-                        frame_idx+=sec.start
-                        for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
-                            all_gaze.append(gp['norm_pos'])
+                if self.heatmap_use_kdata:
+                    add_unbiased_gaze(sec)
+                else:
+                    add_gaze_on_srf_by_frame(sec)
 
-        else:  # 'section' becomes 'slice' of current selected section 
-            for frame_idx,c_e in enumerate(self.cache[section]):
-                if c_e:
-                    frame_idx+=section.start
-                    for gp in self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen']):
-                        all_gaze.append(gp['norm_pos'])
+        else:  # 'section' becomes 'slice' of current selected section
+            if self.heatmap_use_kdata:
+                add_unbiased_gaze(section)
+            else:
+                add_gaze_on_srf_by_frame(section)
 
         if not all_gaze:
             logger.warning("No gaze data on surface for heatmap found.")
