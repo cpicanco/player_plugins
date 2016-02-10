@@ -63,6 +63,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.gaze_correction_block_size = '1000'
         self.gaze_correction_min_confidence = 0.98
         self.gaze_correction_k = 2
+        self.heatmap_use_kdata = True
 
     def load_surface_definitions_from_file(self):
         self.surface_definitions = Persistent_Dict(os.path.join(self.g_pool.rec_dir,'surface_definitions'))
@@ -180,9 +181,13 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
             self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
         
-        if self.mode == 'Show Gaze Correction':
+        if self.mode == 'Show Kmeans Correction':
             self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
             self.menu.append(ui.Text_Input('gaze_correction_block_size',self,label='Block Size'))
+            self.menu.append(ui.Slider('gaze_correction_min_confidence',self,min=0.0,step=0.01,max=1.0,label='Minimun gaze confidence'))
+            self.menu.append(ui.Slider('gaze_correction_k',self,min=1,step=1,max=24,label='K clusters'))
+
+        if self.mode == 'Show Gaze Cloud':
             self.menu.append(ui.Slider('gaze_correction_min_confidence',self,min=0.0,step=0.01,max=1.0,label='Minimun gaze confidence'))
             self.menu.append(ui.Slider('gaze_correction_k',self,min=1,step=1,max=24,label='K clusters'))
 
@@ -191,6 +196,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.menu.append(ui.Switch('heatmap_blur',self,label='Blur'))
             self.menu.append(ui.Slider('heatmap_blur_gradation',self,min=0.01,step=0.01,max=1.0,label='Blur Gradation'))
             self.menu.append(ui.Selector('heatmap_colormap',self,label='Color Map',selection=['AUTUMN','BONE', 'JET', 'WINTER', 'RAINBOW', 'OCEAN', 'SUMMER', 'SPRING', 'COOL', 'HSV', 'PINK', 'HOT']))
+            self.menu.append(ui.Switch('heatmap_use_kdata',self,label='Use K Data'))
 
         self.menu.append(ui.Info_Text('Select a section. To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
         self.menu.append(ui.Button("(Re)-calculate gaze distributions",self.recalculate))
@@ -261,14 +267,15 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 s.heatmap_blur = self.heatmap_blur
                 s.heatmap_blur_gradation = self.heatmap_blur_gradation
                 s.heatmap_colormap = self.heatmap_colormap
+                s.heatmap_use_kdata = self.heatmap_use_kdata
                 s.gaze_correction_block_size = self.gaze_correction_block_size
                 s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
                 s.gaze_correction_k = self.gaze_correction_k
 
-                s.generate_heatmap(section)
                 s.generate_gaze_cloud(section)
                 s.generate_gaze_correction(section)
                 s.generate_mean_correction(section)
+                s.generate_heatmap(section)
 
 
         # calc distirbution accross all surfaces.
@@ -341,6 +348,10 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         if self.mode == "Show Kmeans Correction":
             for s in self.surfaces:
                 s.gl_display_gaze_correction()
+
+        if self.mode == "Show Heatmap Correction":
+            for s in self.surfaces:
+                s.gl_display_mean_correction()
 
         if self.mode == "Show Mean Correction":
             for s in self.surfaces:
