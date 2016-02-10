@@ -32,7 +32,7 @@ except:
             raise IOError, scapp_vlh_report_path+" not found."
     except IOError, e:
         print e, "using hardcoded paths"
-        output_path = "/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/002"
+        output_path = "/home/rafael/documents/doutorado/data_doc/008-Thaiane/2015-05-19/004"
         scapp_timestamps_path = os.path.join(output_path, "scapp_output.timestamps")
         scapp_vlh_report_path = os.path.join(output_path, "scapp_report.data")
 
@@ -43,7 +43,7 @@ else:
     print "output:",scapp_timestamps_path
     print "report:",scapp_vlh_report_path
 
-# attention to the 'skip' vars
+# attention to the 'skip_header': 13 (first) or 9 (the rest)
 scapp_report = np.genfromtxt(scapp_vlh_report_path,
     delimiter="\t", missing_values=["NA"], skip_header=9, skip_footer=1,
     filling_values=None, names=True, deletechars='_', autostrip=True,
