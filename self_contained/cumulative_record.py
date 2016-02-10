@@ -46,7 +46,7 @@ def load_data_from_path(path):
     #         print "code", stimulus[1]
 
     begin = stimuli_by_trial[0][0][0]
-    end = stimuli_by_trial[-1][-1][0] 
+    #end = stimuli_by_trial[-1][-1][0] 
 
     # load timestamps1, responses
     responses = []
@@ -62,7 +62,7 @@ def load_data_from_path(path):
 
     ymax = len(responses)
     print ymax, 'responses'
-    return stimuli_by_trial, responses, cumulative, begin, end
+    return stimuli_by_trial, responses, cumulative, begin #, end
 
 def standard_plot(axis):
     # vertical lines
@@ -100,17 +100,18 @@ if __name__ == '__main__':
 ###########
 
     paths = [
-             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/001",
-             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/002",
-             "/home/rafael/documents/doutorado/data_doc/009-Rebeca/2015-05-25/001"
+             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/000",
+             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/001",
+             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/002",
+             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/003"
             ]
 
     # global vars
     data = []
     ymax = []
     for path in paths:
-        stimuli_by_trial, responses, cumulative, begin, end = load_data_from_path(path)
-        data.append((stimuli_by_trial, responses, cumulative, begin, end))
+        stimuli_by_trial, responses, cumulative, begin = load_data_from_path(path)
+        data.append((stimuli_by_trial, responses, cumulative, begin))
         ymax.append(len(responses))
 
     ymax = np.amax(ymax)
@@ -127,21 +128,24 @@ if __name__ == '__main__':
         figsize = (16, 4)
 
     # figure.add_axes([0.1, 0.1, 0.8, 0.8], frameon = 0)
-    figure, axarr = plt.subplots(1, n_plots, sharey=True, sharex=False, figsize=figsize)
-    #figure.subplots_adjust(wspace=0,bottom=0.15) 
+    figure, axarr = plt.subplots(1, n_plots, sharey=True, sharex=False, figsize=figsize) 
     figure.suptitle(title);
     figure.text(0.5, 0.02, x_label)
     #figure.text(0.014, 0.5, y_label, rotation='vertical',verticalalignment='center',horizontalalignment='right')
 
     for i, d in enumerate(data):
-        (stimuli_by_trial, responses, cumulative, begin, end) = d
+        (stimuli_by_trial, responses, cumulative, begin) = d
         standard_plot(axarr[i])
+        plt.xlim(xmax = 300)
 
     axarr[0].set_ylabel(y_label)
-    axarr[0].legend(loc=(0.0,0.735))
+    axarr[0].legend(loc=(0.0,0.73))
+
     # axarr[1].set_xlabel(x_label)
     plt.ylim(ymax = ymax, ymin = 0)
-    figure.tight_layout()
+
+    figure.subplots_adjust(wspace=0.1,left=0.05, right=.98,bottom=0.1,top=0.92)
+    #figure.tight_layout()
     plt.show()
 
     # for line in output:
