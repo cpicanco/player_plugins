@@ -122,7 +122,7 @@ prev_img = None
 tick = 0
 
 def detect_markers_robust(gray_img,grid_size,prev_markers,min_marker_perimeter=40,aperture=11,visualize=False,true_detect_every_frame = 1):
-    global prev_img
+    #global prev_img
 
     global tick
     if not tick:
@@ -172,23 +172,23 @@ def detect_markers_robust(gray_img,grid_size,prev_markers,min_marker_perimeter=4
     markers = new_markers
 
 
-    prev_img = gray_img.copy()
+    #prev_img = gray_img.copy()
     return markers
 
-def bench():
-    cap = cv2.VideoCapture('/home/rafael/greserved/pupil-o/recordings/2015_05_13/natan/world.mkv')
-    status,img = cap.read()
-    markers = []
-    while status:
-        markers = detect_markers_robust(img,5,markers,true_detect_every_frame=1)
-        status,img = cap.read()
-        if markers:
-            return
+# def bench():
+#     cap = cv2.VideoCapture('/home/rafael/greserved/pupil-o/recordings/2015_05_13/natan/world.mkv')
+#     status,img = cap.read()
+#     markers = []
+#     while status:
+#         markers = detect_markers_robust(img,5,markers,true_detect_every_frame=1)
+#         status,img = cap.read()
+#         if markers:
+#             return
 
-if __name__ == '__main__':
-    import cProfile,subprocess,os
-    cProfile.runctx("bench()",{},locals(),"world.pstats")
-    loc = os.path.abspath(__file__).rsplit('pupil_src', 1)
-    gprof2dot_loc = os.path.join(loc[0], 'pupil_src', 'shared_modules','gprof2dot.py')
-    subprocess.call("python "+gprof2dot_loc+" -f pstats world.pstats | dot -Tpng -o world_cpu_time.png", shell=True)
-    print "created  time graph for  process. Please check out the png next to this file"
+# if __name__ == '__main__':
+#     import cProfile,subprocess,os
+#     cProfile.runctx("bench()",{},locals(),"world.pstats")
+#     loc = os.path.abspath(__file__).rsplit('pupil_src', 1)
+#     gprof2dot_loc = os.path.join(loc[0], 'pupil_src', 'shared_modules','gprof2dot.py')
+#     subprocess.call("python "+gprof2dot_loc+" -f pstats world.pstats | dot -Tpng -o world_cpu_time.png", shell=True)
+#     print "created  time graph for  process. Please check out the png next to this file"

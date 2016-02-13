@@ -61,7 +61,7 @@ def get_cluster_hierarchy(ellipses,dist_threshold):
 
     return cluster_hierarchy
 
-def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, threshold, mode=True):
+def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, threshold, mode=False):
     candidate_ellipses = []
     debug_contours_output = []
     merge = []
@@ -81,8 +81,8 @@ def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, thres
         edges = cv2.adaptiveThreshold(gray_img, 255,
                                     adaptiveMethod = cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                     thresholdType = cv2_thresh_mode,
-                                    blockSize = 5,
-                                    C = -3)
+                                    blockSize = 7,
+                                    C = -1)
 
 
     #f = open('/home/rafael/Downloads/pupil-3x/pupil_src/player/data2.txt', 'w')
@@ -133,6 +133,9 @@ def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, thres
             #debug_contours_output = contained_contours
             # need at least 5 points to fit ellipse
             contained_contours =  [c for c in contained_contours if len(c) >= 5]
+
+            if contained_contours != None:    
+                contained_contours = [c for c in contained_contours if cv2.contourArea(c) > 1000]
 
             ellipses = [cv2.fitEllipse(c) for c in contained_contours]
             candidate_ellipses = []

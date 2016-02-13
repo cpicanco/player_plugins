@@ -74,7 +74,7 @@ class Vis_Circle_On_Contours(Plugin):
 
         # detector
         self.candraw = False
-        self.expected_contours = 9
+        self.expected_contours = 2
         self.ellipse_size = 2.0
         self.epsilon = epsilon
         self.show_edges = True
@@ -92,7 +92,7 @@ class Vis_Circle_On_Contours(Plugin):
         #            (0, 0, 1, self.a),       # red
         #            (1, 1, 1, self.a),       # white
         #            (0.5, 0.5, 0.5, self.a)] # gray
-        #
+
         # for 9 expected contours we need 512 color        ]
         self.colors = get_512_colors()
 
@@ -101,16 +101,20 @@ class Vis_Circle_On_Contours(Plugin):
 
         self.ColorDictionary = dict(zip(self.codes, self.colors))
 
+        self.ColorDictionary['+1-2'] = (1, 0, 0, self.a) # blue
+        self.ColorDictionary['-1+2'] = (0, 1, 0, self.a) # green
+
         # overide some target colors
-        self.ColorDictionary['+1-2-3-4-5-6-7-8-9'] = (1, 0, 0, self.a) # blue
-        self.ColorDictionary['-1+2-3-4-5-6-7-8-9'] = (0, 1, 0, self.a) # green
-        self.ColorDictionary['-1-2+3-4-5-6-7-8-9'] = (1, 1, 0, self.a) # blue marine
-        self.ColorDictionary['-1-2-3+4-5-6-7-8-9'] = (0, 1, 1, self.a) # yellow
-        self.ColorDictionary['-1-2-3-4+5-6-7-8-9'] = (1, 0, 1, self.a) # purple
-        self.ColorDictionary['-1-2-3-4-5+6-7-8-9'] = (0, 0, 1, self.a) # red
-        self.ColorDictionary['-1-2-3-4-5-6+7-8-9'] = (1, 1, 1, self.a) # white
-        self.ColorDictionary['-1-2-3-4-5-6-7+8-9'] = (0.5, 0.5, 0.5, self.a)  # gray
-        self.ColorDictionary['-1-2-3-4-5-6-7-8+9'] = (0.75, 0.2, 0.5, self.a)  # ?
+        # self.ColorDictionary['+1-2-3-4-5-6-7-8-9'] = (1, 0, 0, self.a) # blue
+        # self.ColorDictionary['-1+2-3-4-5-6-7-8-9'] = (0, 1, 0, self.a) # green
+        # self.ColorDictionary['-1-2+3-4-5-6-7-8-9'] = (1, 1, 0, self.a) # blue marine
+        # self.ColorDictionary['-1-2-3+4-5-6-7-8-9'] = (0, 1, 1, self.a) # yellow
+        # self.ColorDictionary['-1-2-3-4+5-6-7-8-9'] = (1, 0, 1, self.a) # purple
+        # self.ColorDictionary['-1-2-3-4-5+6-7-8-9'] = (0, 0, 1, self.a) # red
+        # self.ColorDictionary['-1-2-3-4-5-6+7-8-9'] = (1, 1, 1, self.a) # white
+        # self.ColorDictionary['-1-2-3-4-5-6-7+8-9'] = (0.5, 0.5, 0.5, self.a)  # gray
+        # self.ColorDictionary['-1-2-3-4-5-6-7-8+9'] = (0.75, 0.2, 0.5, self.a)  # ?
+        
         #self.ColorDictionary['+1'] = (230, 50, 230, 150)
         #self.ColorDictionary['-1'] = (0, 0, 0, 255) 
 
