@@ -31,7 +31,7 @@ class Trim_Marks_Extended(Trim_Marks):
                 p.alive = False
                 break
         g_pool.trim_marks = self # attach self for ease of access by others.
-
+        self.uniqueness = 'by_base_class'
         # focused section
         self._focus = focus
 
