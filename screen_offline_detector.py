@@ -321,13 +321,15 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     # assign user defined variables
                     s.heatmap_blur = self.heatmap_blur
                     s.heatmap_blur_gradation = self.heatmap_blur_gradation
+                    s.heatmap_use_kdata = self.heatmap_use_kdata
                     s.gaze_correction_block_size = self.gaze_correction_block_size
                     s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
                     s.gaze_correction_k = self.gaze_correction_k
                     
                     # generate visualizations
-                    s.generate_heatmap(sections, True)
                     s.generate_gaze_cloud(sections, True)
+                    s.generate_gaze_correction(sections, True)
+                    s.generate_heatmap(sections, True)
 
             logger.info("Recalculate visualizations done.")
                     

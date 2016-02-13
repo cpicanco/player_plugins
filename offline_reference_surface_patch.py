@@ -350,7 +350,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         self.gaze_cloud_texture = Named_Texture()
         self.gaze_cloud_texture.update_from_ndarray(self.gaze_cloud)
 
-    def generate_gaze_correction(self,section):
+    def generate_gaze_correction(self,section,use_all_sections=False):
         # todo: implement more robust outlier handling
         # def remove_outliers(gaze_points):
         kmeans_plugin_alive = False
@@ -377,27 +377,40 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             gaze_block[:, 1] += bias[1]
             return gaze_block
 
+        def add_gaze(sec, gaze_no_confidence,gaze_outside_srf,no_surface):
+            for frame_idx,c_e in enumerate(self.cache[sec]):
+                if c_e:
+                    frame_idx+=sec.start
+                    for i, gp in enumerate(self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
+                        if gp['on_srf']:
+                            if gp['base']['confidence'] >= self.gaze_correction_min_confidence:
+                                all_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos']})
+                            else:
+                                gaze_no_confidence += 1
+                        else:
+                            gaze_outside_srf += 1
+                else:
+                    no_surface += 1
+
         if self.cache is None:
             logger.error('Surface cache is not build yet.')
             return
 
         all_gaze = []
-        gaze_outside_srf = 0
         gaze_no_confidence = 0
+        gaze_outside_srf = 0
         no_surface = 0
-        for frame_idx,c_e in enumerate(self.cache[section]):
-            if c_e:
-                frame_idx+=section.start
-                for i, gp in enumerate(self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
-                    if gp['on_srf']:
-                        if gp['base']['confidence'] >= self.gaze_correction_min_confidence:
-                            all_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos']})
-                        else:
-                            gaze_no_confidence += 1
-                    else:
-                        gaze_outside_srf += 1
-            else:
-                no_surface += 1
+
+        if use_all_sections:
+            for sec in section:
+                in_mark = sec[0]
+                out_mark = sec[1]
+                sec = slice(in_mark,out_mark)
+                add_gaze(sec, gaze_no_confidence, gaze_outside_srf, no_surface)
+
+        else:
+            add_gaze(section, gaze_no_confidence, gaze_outside_srf, no_surface)
+        
 
         if not all_gaze:
             logger.error("No gaze point on surface found.")
