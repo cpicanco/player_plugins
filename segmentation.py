@@ -23,6 +23,7 @@ from plugin import Plugin
 
 import logging
 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING) 
 
@@ -32,6 +33,7 @@ class TrialContainer(object):
         self.ExpectedResponse = None
         self.TimeEvents = []
         self.Timestamps = []
+        self.Distance = []
         # self.GazePoints = []
         # self.CirPoints = []
         # self.CirRanking = []
@@ -61,13 +63,28 @@ class Segmentation(Plugin):
     - selector to manage multiple saved sections
 
     """
-    def __init__(self, g_pool, custom_events=[], mode='chain', keep_create_order=True):
+    def __init__(self, g_pool, custom_events=[], mode='chain', keep_create_order=True,
+                expected_response='NA',filter_by_expresp=True,
+                angle='NA',filter_by_angle=True,
+                distance='NA',filter_by_distance=True,
+                offset=0.0,onset=0.0,
+                color='red'):
         super(Segmentation, self).__init__(g_pool)
+        Trim_Marks_Extended_Exist = False
+        for p in g_pool.plugins:
+            if p.class_name == 'Trim_Marks_Extended':
+                Trim_Marks_Extended_Exist = True
+                break
+
+        if not Trim_Marks_Extended_Exist:
+            from trim_marks_patch import Trim_Marks_Extended
+            g_pool.plugins.add(Trim_Marks_Extended)
+            del Trim_Marks_Extended
 
         # Pupil Player system configs
         self.trim_marks = g_pool.trim_marks
         self.order = .8
-        self.uniqueness = "unique"
+        self.uniqueness = "by_class"
 
         # Pupil Player data
         self.capture = g_pool.capture
@@ -89,14 +106,18 @@ class Segmentation(Plugin):
         self.custom_events_path = path.join(self.g_pool.rec_dir,'custom_events.npy')
         try:
             self.custom_events = list(np.load(self.custom_events_path))
-            logger.info("Custom events were found at: "+ self.custom_events_path)
+            if not self.custom_events:
+                logger.warning("List is empty. Loading from cache.")
+                self.custom_events = custom_events
+            else:
+                logger.info("Custom events loaded: "+ self.custom_events_path)
         except:
-            logger.warning("No custom events were found at: "+ self.custom_events_path)
+            logger.warning("No custom events at: "+ self.custom_events_path)
             self.custom_events = custom_events
             if not self.custom_events:
                 logger.warning("No chached events were found.")
             else:
-                logger.warning("Using chached events. Please, save them if necessary. Otherwise, if you close Segmentation plugin those events will be lost.")
+                logger.warning("Using chached events. Please, save them if necessary.")
 
         # stimulus control application data
         self.scapp_output = None
@@ -109,13 +130,19 @@ class Segmentation(Plugin):
         self.load_scapp_output_npy()
 
         # todo: find a way to load these properties dinamically based on column names
-        self.expected_response = '0'
-        self.filter_by_expresp = True
+        self.expected_response = expected_response
+        self.filter_by_expresp = filter_by_expresp
 
-        self.angle = '0'
-        self.filter_by_angle = True
+        self.angle = angle
+        self.filter_by_angle = filter_by_angle
 
-        self.color = 'red'
+        self.distance = distance
+        self.filter_by_distance = filter_by_distance
+
+        self.offset = offset
+        self.onset = onset
+
+        self.color = color
 
     def load_scapp_output_npy(self):
         scapp_output_path = path.join(self.g_pool.rec_dir,"scapp_output.npy")
@@ -339,10 +366,21 @@ class Segmentation(Plugin):
 
         s_menu = ui.Growing_Menu("Filters")
         s_menu.collapsed=False
+
+        unique_items = set(self.scapp_report['Angle'])
         s_menu.append(ui.Switch('filter_by_angle',self,label="by Angle"))
-        s_menu.append(ui.Selector('angle',self,label='Angles',selection=['0', '45', '90', '135'] ))
+        s_menu.append(ui.Selector('angle',self,label='Angles',selection=[str(i) for i in unique_items] ))
+
+        unique_items = set(self.scapp_report['ExpcResp'])
         s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
-        s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=['0', '1'] ))
+        s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=[str(i) for i in unique_items]))
+
+        unique_items = sorted(set(zip(self.scapp_report['Angle'],self.scapp_report['X1'],self.scapp_report['Y1'])))
+        s_menu.append(ui.Switch('filter_by_distance',self,label="by Distance"))
+        s_menu.append(ui.Selector('distance',self,label='Distance',selection=[str(i) for i in unique_items]))
+
+        s_menu.append(ui.Slider('onset',self,min=0.00,step=0.1,max=2.0,label='onset'))
+        s_menu.append(ui.Slider('offset',self,min=0.00,step=0.1,max=2.0,label='offset'))
         s_menu.append(ui.Button('Add Events',self.add_filtered_events))
         s_menu.append(ui.Button('Clean, Add, Trim',self.clean_add_trim))
         self.menu.append(s_menu)
@@ -416,20 +454,25 @@ class Segmentation(Plugin):
         for n, trial in enumerate(Trials):
             trial.ExpectedResponse = self.scapp_report[n]['ExpcResp']
             trial.Angle = str(self.scapp_report[n]['Angle'])
+            trial.Distance = (self.scapp_report[n]['Angle'],self.scapp_report[n]['X1'],self.scapp_report[n]['Y1'])
             trial.TimeEvents = self.scapp_output[n]
 
             # find frame of correspondent event (firstResponse, starter onset...)
-            firstResponse = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[1][0])).argmin()
-            endLimitedHold = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[-1][0])).argmin()
+            firstResponse = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[1][0])-self.onset).argmin()
+            endLimitedHold = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[-1][0])+self.offset).argmin()
 
-            # add frames to the custom events list
+            # conditions
             filtering_conditions = []
             if self.filter_by_expresp:
                 filtering_conditions.append(str(trial.ExpectedResponse) == self.expected_response)
 
             if self.filter_by_angle:
                 filtering_conditions.append(trial.Angle == self.angle)
+
+            if self.filter_by_distance:
+                filtering_conditions.append(str(trial.Distance) == self.distance)
          
+            # add frames to the custom events if all conditions are true
             if filtering_conditions != []:
                 if all(filtering_conditions):
                     self.custom_events.append(firstResponse)
@@ -506,4 +549,13 @@ class Segmentation(Plugin):
     def get_init_dict(self):
         return {'custom_events':self.custom_events,
                 'mode':self.mode,
-                'keep_create_order':self.keep_create_order}
+                'keep_create_order':self.keep_create_order,
+                'expected_response':self.expected_response,
+                'filter_by_expresp':self.filter_by_expresp,
+                'angle':self.angle,
+                'filter_by_angle':self.filter_by_angle,
+                'distance':self.distance,
+                'filter_by_distance':self.filter_by_distance,
+                'offset':self.offset,
+                'onset':self.onset,
+                'color':self.color}
