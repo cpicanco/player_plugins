@@ -4,6 +4,11 @@
 
   Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
 
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ```
@@ -11,9 +16,35 @@
 
 Run time plugins written to or modified from Pupil Player software (http://pupil-labs.com).
 
-# instructions
+# overview
 
-Please, note that it is not completely functional yet (2015-11-18).
+Please, note it is a work in progress (2016-02-15).
+
+**Functional stuff as follows**:
+
+- Main (export, analytics, functionality)
+  - export_images
+  - fixation_detector_patch
+  - screen_offline_detector
+  - segmentation
+  - trim_marks_patch
+  - vis_circle_on_contours
+
+- Dependencies
+  - offline_reference_surface_patch
+  - quad_segmentation
+  - screen_detector
+  - screen_detector_cacher
+  - vcc_methods
+
+- Visualization Only
+  - display_recent_gaze_patch
+  - filter_opencv_threshold
+
+**Not functional yet**
+  - kmeans_gaze_correction
+
+# install instructions
 
 No instalation is required. Just clone the repository as follows:
 

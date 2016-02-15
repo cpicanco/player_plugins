@@ -3,10 +3,10 @@
   Pupil Player Third Party Plugins by cpicanco
   Copyright (C) 2015 Rafael Picanço.
 
-  Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
+  The present file is distributed under the terms of the GNU General Public License (GPL v3.0).
 
   You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 
 from os import path
@@ -121,8 +121,11 @@ class Segmentation(Plugin):
 
         # stimulus control application data
         self.scapp_output = None
-        self.load_scapp_output()
-
+        try:
+            self.load_scapp_output()
+        except Exception, e:
+            logger.warning("scapp_output.timestamps error")
+        
         self.scapp_report = None
         self.load_scapp_report()
 
@@ -293,11 +296,13 @@ class Segmentation(Plugin):
         """
         scapp_report_path = path.join(self.g_pool.rec_dir,'scapp_report.data')
         if path.isfile(scapp_report_path):
-            self.scapp_report = np.genfromtxt(scapp_report_path,
-                delimiter="\t", missing_values=["NA"], skip_header=6, skip_footer=1,
-                filling_values=None, names=True, deletechars='_', autostrip=True,
-                dtype=None)
-
+            try:
+                self.scapp_report = np.genfromtxt(scapp_report_path,
+                    delimiter="\t", missing_values=["NA"], skip_header=6, skip_footer=1,
+                    filling_values=None, names=True, deletechars='_', autostrip=True,
+                    dtype=None)
+            except ValueError, e:
+                logger.warning("genfromtxt error")
         else:
             logger.warning("File not found: "+ scapp_report_path)
 
@@ -363,27 +368,27 @@ class Segmentation(Plugin):
         # first guess is to use switchs
         # in order to allow easy to add/remove a filter, but list of switchs too long would not be good
 
+        if self.scapp_report:
+            s_menu = ui.Growing_Menu("Filters")
+            s_menu.collapsed=False
 
-        s_menu = ui.Growing_Menu("Filters")
-        s_menu.collapsed=False
+            unique_items = set(self.scapp_report['Angle'])
+            s_menu.append(ui.Switch('filter_by_angle',self,label="by Angle"))
+            s_menu.append(ui.Selector('angle',self,label='Angles',selection=[str(i) for i in unique_items] ))
 
-        unique_items = set(self.scapp_report['Angle'])
-        s_menu.append(ui.Switch('filter_by_angle',self,label="by Angle"))
-        s_menu.append(ui.Selector('angle',self,label='Angles',selection=[str(i) for i in unique_items] ))
+            unique_items = set(self.scapp_report['ExpcResp'])
+            s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
+            s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=[str(i) for i in unique_items]))
 
-        unique_items = set(self.scapp_report['ExpcResp'])
-        s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
-        s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=[str(i) for i in unique_items]))
+            unique_items = sorted(set(zip(self.scapp_report['Angle'],self.scapp_report['X1'],self.scapp_report['Y1'])))
+            s_menu.append(ui.Switch('filter_by_distance',self,label="by Distance"))
+            s_menu.append(ui.Selector('distance',self,label='Distance',selection=[str(i) for i in unique_items]))
 
-        unique_items = sorted(set(zip(self.scapp_report['Angle'],self.scapp_report['X1'],self.scapp_report['Y1'])))
-        s_menu.append(ui.Switch('filter_by_distance',self,label="by Distance"))
-        s_menu.append(ui.Selector('distance',self,label='Distance',selection=[str(i) for i in unique_items]))
-
-        s_menu.append(ui.Slider('onset',self,min=0.00,step=0.1,max=2.0,label='onset'))
-        s_menu.append(ui.Slider('offset',self,min=0.00,step=0.1,max=2.0,label='offset'))
-        s_menu.append(ui.Button('Add Events',self.add_filtered_events))
-        s_menu.append(ui.Button('Clean, Add, Trim',self.clean_add_trim))
-        self.menu.append(s_menu)
+            s_menu.append(ui.Slider('onset',self,min=0.00,step=0.1,max=2.0,label='onset'))
+            s_menu.append(ui.Slider('offset',self,min=0.00,step=0.1,max=2.0,label='offset'))
+            s_menu.append(ui.Button('Add Events',self.add_filtered_events))
+            s_menu.append(ui.Button('Clean, Add, Trim',self.clean_add_trim))
+            self.menu.append(s_menu)
 
         s_menu = ui.Growing_Menu("Filters 2")
         s_menu.collapsed=False
@@ -392,7 +397,8 @@ class Segmentation(Plugin):
         #s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
         #s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=['0', '1'] ))
         s_menu.append(ui.Button('Add Events',self.add_filtered_events_npy))
-        #s_menu.append(ui.Button('Clean, Add, Trim',self.clean_add_trim))        # self.menu.append(ui.Info_Text('Dispersion'))
+        s_menu.append(ui.Button('Clean, Add, Trim',self.clean_add_trim_2))
+        # self.menu.append(ui.Info_Text('Dispersion'))
         # 0, 1, 2, 3, 4 .. n
 
         self.menu.append(s_menu)
@@ -406,6 +412,10 @@ class Segmentation(Plugin):
         self.add_filtered_events()
         self.auto_trim()
 
+    def clean_add_trim_2(self):
+        self.clean_custom_events()
+        self.add_filtered_events_npy()
+        self.auto_trim()
 
     def trial_from_timestamp(self, timestamp):
         """
@@ -428,23 +438,26 @@ class Segmentation(Plugin):
                 begin = np.abs(self.g_pool.timestamps - np.float64(Trials[len(Trials)-1].TimeEvents[-1][0])).argmin()
                 self.custom_events.append(begin)
 
-        Trials = [TrialContainer() for _ in self.scapp_output_npy]
-        
-        # fill it with data
-        if self.color == 'red':
-            for n, trial in enumerate(Trials):
-                trial.TimeEvents = self.scapp_output_npy[n]
-                begin = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[0][0])).argmin()
-                self.custom_events.append(begin)
-            check_last_even()
-
-        if self.color == 'blue':
-            for n, trial in enumerate(Trials):
-                if n > 0:
+        if self.scapp_output_npy:
+            Trials = [TrialContainer() for _ in self.scapp_output_npy]
+            
+            # fill it with data
+            if self.color == 'red':
+                for n, trial in enumerate(Trials):
                     trial.TimeEvents = self.scapp_output_npy[n]
                     begin = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[0][0])).argmin()
                     self.custom_events.append(begin)
-            check_last_even()
+                check_last_even()
+
+            if self.color == 'blue':
+                for n, trial in enumerate(Trials):
+                    if n > 0:
+                        trial.TimeEvents = self.scapp_output_npy[n]
+                        begin = np.abs(self.g_pool.timestamps - np.float64(Trials[n].TimeEvents[0][0])).argmin()
+                        self.custom_events.append(begin)
+                check_last_even()
+        else:
+            logger.error("The scapp_output_npy data was not loaded.")
 
     def add_filtered_events(self):
         # create a container with the size of the total trials

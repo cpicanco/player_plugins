@@ -3,10 +3,10 @@
   Pupil Player Third Party Plugins by cpicanco
   Copyright (C) 2015 Rafael Picanço.
 
-  Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
+  The present file is distributed under the terms of the GNU General Public License (GPL v3.0).
 
   You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 
 # Hack from Pupil (v0.3.7.4 .. v0.4x):
@@ -324,5 +324,3 @@ class Vis_Circle_On_Contours(Plugin):
         if you have a GUI or glfw window destroy it here.
         """
         self.deinit_gui()
-
-

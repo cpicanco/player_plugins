@@ -3,10 +3,10 @@
   Pupil Player Third Party Plugins by cpicanco
   Copyright (C) 2015 Rafael Picanço.
 
-  Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
+  The present file is distributed under the terms of the GNU General Public License (GPL v3.0).
 
   You should have received a copy of the GNU General Public License
-  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 # modified version of offline_marker_detector
 
@@ -330,6 +330,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     s.generate_gaze_cloud(sections, True)
                     s.generate_gaze_correction(sections, True)
                     s.generate_heatmap(sections, True)
+                    s.generate_mean_correction(sections, True)
 
             logger.info("Recalculate visualizations done.")
                     
