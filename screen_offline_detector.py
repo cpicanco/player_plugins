@@ -59,7 +59,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         # heatmap
         self.heatmap_blur = True
         self.heatmap_blur_gradation = 0.12
-        self.heatmap_colormap = "JET"
+        self.heatmap_colormap = "viridis"
         self.gaze_correction_block_size = '1000'
         self.gaze_correction_min_confidence = 0.98
         self.gaze_correction_k = 2
@@ -195,7 +195,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.menu.append(ui.Info_Text('Heatmap Settings'))
             self.menu.append(ui.Switch('heatmap_blur',self,label='Blur'))
             self.menu.append(ui.Slider('heatmap_blur_gradation',self,min=0.01,step=0.01,max=1.0,label='Blur Gradation'))
-            self.menu.append(ui.Selector('heatmap_colormap',self,label='Color Map',selection=['AUTUMN','BONE', 'JET', 'WINTER', 'RAINBOW', 'OCEAN', 'SUMMER', 'SPRING', 'COOL', 'HSV', 'PINK', 'HOT']))
+            self.menu.append(ui.Selector('heatmap_colormap',self,label='Color Map',selection=['magma', 'inferno', 'plasma', 'viridis', 'jet']))
             self.menu.append(ui.Switch('heatmap_use_kdata',self,label='Use K Data'))
 
         self.menu.append(ui.Info_Text('Select a section. To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
@@ -207,6 +207,9 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.append(ui.Info_Text('Export gaze metrics. We recalculate metrics for each section when exporting all sections. Press the recalculate button before export the current selected section.'))
         self.menu.append(ui.Button("Export current section", self.save_surface_statsics_to_file))
         self.menu.append(ui.Button("Export all sections", self.export_all_sections))
+
+        self.menu.append(ui.Info_Text('Requires segmentation plugin.'))
+        self.menu.append(ui.Button("Export all distances", self.export_all_distances))
 
         for s in self.surfaces:
             idx = self.surfaces.index(s)
@@ -322,6 +325,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     s.heatmap_blur = self.heatmap_blur
                     s.heatmap_blur_gradation = self.heatmap_blur_gradation
                     s.heatmap_use_kdata = self.heatmap_use_kdata
+                    s.heatmap_colormap = self.heatmap_colormap
                     s.gaze_correction_block_size = self.gaze_correction_block_size
                     s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
                     s.gaze_correction_k = self.gaze_correction_k
@@ -336,7 +340,6 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     
         else:
             logger.error("Trim_Marks_Extended not found. Have you opened it?")
-
 
     def gl_display(self):
         """
@@ -359,6 +362,90 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         if self.mode == "Show Mean Correction":
             for s in self.surfaces:
                 s.gl_display_mean_correction()
+
+    def export_all_distances(self):
+        segmentation = None
+        for p in self.g_pool.plugins:
+            if p.class_name == 'Segmentation':
+                if p.alive:
+                    segmentation = p
+                    break
+
+        if segmentation is not None:
+            angles,x1,y1 = segmentation.scapp_report['Angle'],segmentation.scapp_report['X1'],segmentation.scapp_report['Y1']
+            unique_items = sorted(set(zip(angles,x1,y1)))
+            for unique_distance in unique_items:
+                segmentation.distance = str(unique_distance)
+                segmentation.clean_add_trim()
+                in_mark = self.g_pool.trim_marks.in_mark
+                out_mark = self.g_pool.trim_marks.out_mark
+
+                # generate visualizations and data
+                self.recalculate_all_sections()
+
+                save_path = os.path.join(self.g_pool.rec_dir,"distance_%s-%s-%s"%unique_distance)
+
+                if os.path.isdir(save_path):
+                    logger.info("Overwriting data on distance %s-%s-%s"%unique_distance)
+                else:
+                    try:
+                        os.mkdir(save_path)
+                    except:
+                        logger.warning("Could not make dir %s"%save_path)
+                        return
+
+                for s in self.surfaces:
+                    surface_name = '_'+s.name.replace('/','')+'_'+s.uid
+                    if s.heatmap is not None:
+                        logger.info("Saved Heatmap as .png file.")
+                        cv2.imwrite(os.path.join(save_path,'heatmap'+surface_name+'.png'),s.heatmap)
+
+                    if s.gaze_cloud is not None:
+                        logger.info("Saved Gaze Cloud as .png file.")
+                        cv2.imwrite(os.path.join(save_path,'gaze_cloud'+surface_name+'.png'),s.gaze_cloud)
+
+                    if s.gaze_correction is not None:
+                        logger.info("Saved Gaze Correction as .png file.")
+                        cv2.imwrite(os.path.join(save_path,'gaze_correction'+surface_name+'.png'),s.gaze_correction)
+
+                    # export a surface image from the center of the first section for visualization purposes only 
+                    self.export_section_image(save_path, s, in_mark, out_mark, os.path.join(save_path,'surface'+surface_name+'.png'))
+
+                    # if s.gaze_correction_mean is not None:
+                    #     logger.info("Saved Gaze Correction Mean as .png file.")
+                    #     cv2.imwrite(os.path.join(save_path,'gaze_correction_mean'+surface_name+'.png'),s.gaze_correction_mean)
+
+                    np.save(os.path.join(save_path,'source_data'),s.output_data)
+
+    def export_section_image(self,save_path,s,in_mark,out_mark,surface_path):
+        # lets save out the current surface image found in video
+        seek_pos = in_mark + ((out_mark - in_mark)/2)
+        self.g_pool.capture.seek_to_frame(seek_pos)
+        new_frame = self.g_pool.capture.get_frame()
+        frame = new_frame.copy()
+        self.update(frame, None)
+        if s.detected and frame.img is not None:
+            #here we get the verts of the surface quad in norm_coords
+            mapped_space_one = np.array(((0,0),(1,0),(1,1),(0,1)),dtype=np.float32).reshape(-1,1,2)
+            screen_space = cv2.perspectiveTransform(mapped_space_one,s.m_to_screen).reshape(-1,2)
+            
+            #now we convert to image pixel coords
+            screen_space[:,1] = 1-screen_space[:,1]
+            screen_space[:,1] *= frame.img.shape[0]
+            screen_space[:,0] *= frame.img.shape[1]
+            s_0,s_1 = s.real_world_size['x'], s.real_world_size['y'] 
+            
+            #now we need to flip vertically again by setting the mapped_space verts accordingly.
+            mapped_space_scaled = np.array(((0,s_1),(s_0,s_1),(s_0,0),(0,0)),dtype=np.float32)
+            M = cv2.getPerspectiveTransform(screen_space,mapped_space_scaled)
+            
+            #here we do the actual perspactive transform of the image.
+            srf_in_video = cv2.warpPerspective(frame.img,M, (int(s.real_world_size['x']),int(s.real_world_size['y'])) )
+            cv2.imwrite(surface_path,srf_in_video)
+            logger.info("Saved: '%s'"%surface_path)
+        else:
+            logger.info("'%s' is not currently visible. Seek to appropriate frame and repeat this command."%s.name)
+
 
     def export_all_sections(self):
         for section in self.g_pool.trim_marks.sections:
@@ -383,36 +470,13 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     logger.info("Saved Gaze Correction as .png file.")
                     cv2.imwrite(os.path.join(metrics_dir,'gaze_correction'+surface_name+'.png'),s.gaze_correction)
 
-                # lets save out the current surface image found in video
-                seek_pos = in_mark + ((out_mark - in_mark)/2)
-                self.g_pool.capture.seek_to_frame(seek_pos)
-                new_frame = self.g_pool.capture.get_frame()
-                frame = new_frame.copy()
-                self.update(frame, None)
-                if s.detected and frame.img is not None:
-                    #here we get the verts of the surface quad in norm_coords
-                    mapped_space_one = np.array(((0,0),(1,0),(1,1),(0,1)),dtype=np.float32).reshape(-1,1,2)
-                    screen_space = cv2.perspectiveTransform(mapped_space_one,s.m_to_screen).reshape(-1,2)
-                    
-                    #now we convert to image pixel coords
-                    screen_space[:,1] = 1-screen_space[:,1]
-                    screen_space[:,1] *= frame.img.shape[0]
-                    screen_space[:,0] *= frame.img.shape[1]
-                    s_0,s_1 = s.real_world_size['x'], s.real_world_size['y'] 
-                    
-                    #now we need to flip vertically again by setting the mapped_space verts accordingly.
-                    mapped_space_scaled = np.array(((0,s_1),(s_0,s_1),(s_0,0),(0,0)),dtype=np.float32)
-                    M = cv2.getPerspectiveTransform(screen_space,mapped_space_scaled)
-                    
-                    #here we do the actual perspactive transform of the image.
-                    srf_in_video = cv2.warpPerspective(frame.img,M, (int(s.real_world_size['x']),int(s.real_world_size['y'])) )
-                    cv2.imwrite(os.path.join(metrics_dir,'surface'+surface_name+'.png'),srf_in_video)
-                    logger.info("Saved current image as .png file.")
-                else:
-                    logger.info("'%s' is not currently visible. Seek to appropriate frame and repeat this command."%s.name)
+                surface_path = os.path.join(metrics_dir,'surface'+surface_name+'.png')
+
+                # export a surface image from the center of the section for visualization purposes only
+                self.export_section_image(metrics_dir, s, in_mark, out_mark, surface_path)
 
                 # lets create alternative versions of the surfaces *.pngs
-                src1 = cv2.imread(os.path.join(metrics_dir,'surface'+surface_name+'.png'))
+                src1 = cv2.imread(surface_path)
                 for g in s.output_data['gaze']:
                     cv2.circle(src1, (int(g[0]),int(g[1])), 3, (0, 0, 0), 0)
 

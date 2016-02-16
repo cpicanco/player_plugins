@@ -8,6 +8,7 @@
   You should have received a copy of the GNU General Public License
   along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
+
 import numpy as np
 import cv2
 from gl_utils import cvmat_to_glmat,clear_gl_screen
@@ -22,6 +23,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 from offline_reference_surface import Offline_Reference_Surface
+
+from colormaps import magma, inferno, plasma, viridis
 
 class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
     """
@@ -255,19 +258,34 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         hist = np.uint8(hist * (scale))
         
         # colormapping
-        colormap = cv2.COLORMAP_JET # just in case the following does not work
-        cv2_colormaps = ['AUTUMN','BONE', 'JET', 'WINTER', 'RAINBOW', 'OCEAN', 'SUMMER', 'SPRING', 'COOL', 'HSV', 'PINK', 'HOT']
-        for i, name in enumerate(cv2_colormaps):
-            if self.heatmap_colormap == name:
-                colormap = i
-                break
+        colormaps = ['magma', 'inferno', 'plasma', 'viridis']
 
+        if self.heatmap_colormap in colormaps:
+            if self.heatmap_colormap == 'magma': 
+                v = np.asarray(magma)
+            elif self.heatmap_colormap == 'inferno': 
+                v = np.asarray(inferno)
+            elif self.heatmap_colormap == 'plasma': 
+                v = np.asarray(plasma)
+            elif self.heatmap_colormap == 'viridis': 
+                v = np.asarray(viridis)
 
-        c_map = cv2.applyColorMap(hist, colormap)
-        #c_map = cv2.applyColorMap(hist, cv2.COLORMAP_JET)
+            v *= 255
+            v = v.astype(np.uint8)
 
-        # we need a 4 channel image to apply transparency
-        self.heatmap = cv2.cvtColor(c_map, cv2.COLOR_BGR2BGRA)
+            RLUT = v[:,0]
+            GLUT = v[:,1]
+            BLUT = v[:,2] 
+            
+            self.heatmap = np.zeros((y_size,x_size,4), np.uint8)
+            self.heatmap[:,:,0] = cv2.LUT(hist, BLUT)
+            self.heatmap[:,:,1] = cv2.LUT(hist, GLUT)
+            self.heatmap[:,:,2] = cv2.LUT(hist, RLUT)
+        else:
+            c_map = cv2.applyColorMap(hist, cv2.COLORMAP_JET)
+
+            # we need a 4 channel image to apply transparency
+            self.heatmap = cv2.cvtColor(c_map, cv2.COLOR_BGR2BGRA)
 
         # alpha blend/transparency
         c_alpha = hist
@@ -430,8 +448,8 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         min_block_size = int(self.gaze_correction_block_size)
 
         if gaze_count < min_block_size:
-            logger.error("Too few data to proceed.")
-            return
+            logger.error("Too few data to proceed. Using min_block_size = gaze_count ")
+            min_block_size = gaze_count
 
         bias_along_blocks = []
         unbiased_gaze = []
@@ -466,7 +484,10 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         for b in bias_to_draw:
             cv2.circle(img, (int(b[0]),int(b[1])), 5, (255, 0, 0), -1)
 
-        unbiased_gaze = [{'frame':g['frame'], 'i': g['i'], 'gaze':unbiased_gaze[i]} for i, g in enumerate(all_gaze)]
+        unbiased_gaze = [{'frame':g['frame'],
+                          'i': g['i'],
+                          'gaze':unbiased_gaze[i],
+                          'gaze_base':g['norm_pos']} for i, g in enumerate(all_gaze)]
 
         self.output_data['unbiased_gaze'] = unbiased_gaze
         self.output_data['unbiased_kmeans'] = centers
@@ -532,8 +553,8 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         min_block_size = int(self.gaze_correction_block_size)
 
         if gaze_count < min_block_size:
-            logger.error("Too few data to proceed.")
-            return
+            logger.error("Too few data to proceed. Using min_block_size = gaze_count ")
+            min_block_size = gaze_count
 
         bias_along_blocks = []
         unbiased_gaze = []
@@ -569,7 +590,10 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         for b in bias_to_draw:
             cv2.circle(img, (int(b[0]),int(b[1])), 5, (255, 0, 0), -1)
 
-        unbiased_gaze = [{'frame':g['frame'], 'i': g['i'], 'gaze':unbiased_gaze[i]} for i, g in enumerate(all_gaze)]
+        unbiased_gaze = [{'frame':g['frame'],
+                          'i': g['i'],
+                          'gaze':unbiased_gaze[i],
+                          'gaze_base':g['norm_pos']} for i, g in enumerate(all_gaze)]
 
         self.output_data['unbiased_gaze_mean'] = unbiased_gaze
         self.output_data['bias_along_blocks_mean'] = bias_along_blocks
