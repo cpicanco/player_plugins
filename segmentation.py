@@ -368,15 +368,16 @@ class Segmentation(Plugin):
         # first guess is to use switchs
         # in order to allow easy to add/remove a filter, but list of switchs too long would not be good
 
-        if self.scapp_report:
+        # todo: not all reports will fit into this... Need a more abstract way
+        if self.scapp_report != None:
             s_menu = ui.Growing_Menu("Filters")
             s_menu.collapsed=False
 
-            unique_items = set(self.scapp_report['Angle'])
+            unique_items = sorted(set(self.scapp_report['Angle']))
             s_menu.append(ui.Switch('filter_by_angle',self,label="by Angle"))
             s_menu.append(ui.Selector('angle',self,label='Angles',selection=[str(i) for i in unique_items] ))
 
-            unique_items = set(self.scapp_report['ExpcResp'])
+            unique_items = sorted(set(self.scapp_report['ExpcResp']))
             s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
             s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=[str(i) for i in unique_items]))
 
