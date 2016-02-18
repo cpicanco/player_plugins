@@ -1,9 +1,6 @@
 import os
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 import cv2
-import numpy as np
-import math
 
 from glob import glob
 
@@ -46,12 +43,16 @@ axes.plot([0,img_surface.shape[1]], [img_surface.shape[0]/2,img_surface.shape[0]
 # x
 axes.plot([img_surface.shape[1]/2,img_surface.shape[1]/2],[0,img_surface.shape[0]/2],color=(.5,.5,.5,.5))
 
-axes.xaxis.set_ticks_position('none')
-axes.yaxis.set_ticks_position('none') 
+#axes.xaxis.set_ticks_position('none')
+axes.yaxis.set_ticks([0, 764])
+axes.yaxis.set_ticks_position('none')
+axes.xaxis.set_ticks([0, 1280]) 
 axes.spines['top'].set_visible(False)
 axes.spines['bottom'].set_visible(False)
 axes.spines['left'].set_visible(False)
 axes.spines['right'].set_visible(False)
+
+figure.subplots_adjust(wspace=0.1,left=0.06, right=.95,bottom=0.0,top=0.99)
 
 plt.ylim(ymax = img_surface.shape[0], ymin = 0)
 plt.xlim(xmax = img_surface.shape[1], xmin = 0)
