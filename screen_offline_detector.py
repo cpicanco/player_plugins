@@ -210,6 +210,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
         self.menu.append(ui.Info_Text('Requires segmentation plugin.'))
         self.menu.append(ui.Button("Export all distances", self.export_all_distances))
+        self.menu.append(ui.Button("Precision Report", self.precision_report))
 
         for s in self.surfaces:
             idx = self.surfaces.index(s)
@@ -362,6 +363,120 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         if self.mode == "Show Mean Correction":
             for s in self.surfaces:
                 s.gl_display_mean_correction()
+
+    def precision_report(self):
+        sections_alive = False
+        if self.g_pool.trim_marks.class_name == 'Trim_Marks_Extended':
+            sections_alive = True
+
+        segmentation = None
+        for p in self.g_pool.plugins:
+            if p.class_name == 'Segmentation':
+                if p.alive:
+                    segmentation = p
+                    break
+
+        if (segmentation is not None) and sections_alive:
+            save_path = os.path.join(self.g_pool.rec_dir,"precision_report")
+            if os.path.isdir(save_path):
+                logger.info("Overwriting data on precision_report")
+            else:
+                try:
+                    os.mkdir(save_path)
+                except:
+                    logger.warning("Could not make dir %s"%save_path)
+                    return
+
+            angles,x1,y1 = segmentation.scapp_report['Angle'],segmentation.scapp_report['X1'],segmentation.scapp_report['Y1']
+            unique_distances = sorted(set(zip(angles,x1,y1)))
+            unique_responses = sorted(set(segmentation.scapp_report['ExpcResp']))
+            segmentation.filter_by_expresp = True
+            segmentation.filter_by_distance = True
+            segmentation.filter_by_angle = False
+            segmentation.mode = 'in out pairs'
+
+            filtered_gaze = []
+            metadata=[]
+            for unique_distance in unique_distances:
+                segmentation.distance = str(unique_distance)
+                for unique_response in unique_responses:
+                    (s1, s2, s3) = unique_distance
+                    metadata.append("r_%s_distance_%s-%s-%s"%(unique_response, s1, s2, s3))
+                    segmentation.expected_response = str(unique_response)
+                    segmentation.clean_add_trim()
+
+                    #in_mark = self.g_pool.trim_marks.in_mark
+                    #out_mark = self.g_pool.trim_marks.out_mark
+
+                    # generate visualizations and data
+                    # self.recalculate_all_sections()
+
+                    sections = self.g_pool.trim_marks.sections
+                    gaze_no_confidence = 0
+                    no_surface = 0
+                    all_gaze = []
+                    for s in self.surfaces: 
+                        if s.defined:
+                            for sec in sections:
+                                in_mark = sec[0]
+                                out_mark = sec[1]
+                                sec = slice(in_mark,out_mark)
+                                for frame_idx,c_e in enumerate(s.cache[sec]):
+                                    if c_e:
+                                        frame_idx+=sec.start
+                                        for i, gp in enumerate(s.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
+                                            if gp['base']['confidence'] >= self.gaze_correction_min_confidence:
+                                                all_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos'],'metatag':'%s-%s-%s-%s'%(unique_response, s1, s2, s3)})
+                                            else:
+                                                gaze_no_confidence += 1
+                                    else:
+                                        no_surface += 1
+
+                    if not all_gaze:
+                        metadata.append("No gaze points found.")
+                        return
+                    else:
+                        gaze_count = len(all_gaze)
+                        metadata.append('Found %s frames with no screen/surface.'%no_surface)
+                        metadata.append("Found %s gaze points."%gaze_count)
+                        metadata.append("Removed '{0}' with confidence < '{1}'".format(gaze_no_confidence, self.gaze_correction_min_confidence))
+
+                    filtered_gaze.append(all_gaze)
+
+            np.save(os.path.join(save_path,'data_ordered_by_metatag'),filtered_gaze)
+            #np.savetxt(os.path.join(save_path,'metadata.txt'),metadata)  
+
+            segmentation.clean_custom_events()
+            for unique_distance in unique_distances:
+                segmentation.distance = str(unique_distance)
+                for unique_response in unique_responses:
+                    segmentation.expected_response = str(unique_response)
+                    segmentation.add_filtered_events()
+            
+            segmentation.auto_trim()
+            filtered_gaze = []
+            mean_at_zero_cluster = []
+            norm_gaze = []
+            for s in self.surfaces: 
+                if s.defined:
+                    for sec in self.g_pool.trim_marks.sections:
+                        section_gaze = []
+                        in_mark = sec[0]
+                        out_mark = sec[1]
+                        sec = slice(in_mark,out_mark)
+                        for frame_idx,c_e in enumerate(s.cache[sec]):
+                            if c_e:
+                                frame_idx+=sec.start
+                                for i, gp in enumerate(s.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
+                                    if gp['base']['confidence'] >= self.gaze_correction_min_confidence:
+                                        section_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos']})
+
+                        filtered_gaze.append(section_gaze)
+            
+            np.save(os.path.join(save_path,'data_ordered_by_trial'),filtered_gaze)                       
+        else:
+            logger.error("Please, open the segmentation plugin.")
+
 
     def export_all_distances(self):
         segmentation = None
