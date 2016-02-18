@@ -211,6 +211,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.append(ui.Info_Text('Requires segmentation plugin.'))
         self.menu.append(ui.Button("Export all distances", self.export_all_distances))
         self.menu.append(ui.Button("Precision Report", self.precision_report))
+        self.menu.append(ui.Button("Slice 1.5 - precision", self.export_all_precision))
 
         for s in self.surfaces:
             idx = self.surfaces.index(s)
@@ -364,7 +365,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             for s in self.surfaces:
                 s.gl_display_mean_correction()
 
-    def precision_report(self):
+    def precision_report(self, custom_tag=None):
         sections_alive = False
         if self.g_pool.trim_marks.class_name == 'Trim_Marks_Extended':
             sections_alive = True
@@ -405,12 +406,6 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     segmentation.expected_response = str(unique_response)
                     segmentation.clean_add_trim()
 
-                    #in_mark = self.g_pool.trim_marks.in_mark
-                    #out_mark = self.g_pool.trim_marks.out_mark
-
-                    # generate visualizations and data
-                    # self.recalculate_all_sections()
-
                     sections = self.g_pool.trim_marks.sections
                     gaze_no_confidence = 0
                     no_surface = 0
@@ -433,6 +428,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                                         no_surface += 1
 
                     if not all_gaze:
+                        logger.error("No Gaze points found.")
                         metadata.append("No gaze points found.")
                         return
                     else:
@@ -443,7 +439,10 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
                     filtered_gaze.append(all_gaze)
 
-            np.save(os.path.join(save_path,'data_ordered_by_metatag'),filtered_gaze)
+            if custom_tag:
+                np.save(os.path.join(save_path,'data_ordered_by_metatag'+custom_tag),filtered_gaze)
+            else:
+                np.save(os.path.join(save_path,'data_ordered_by_metatag'),filtered_gaze)
             #np.savetxt(os.path.join(save_path,'metadata.txt'),metadata)  
 
             segmentation.clean_custom_events()
@@ -472,11 +471,31 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                                         section_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos']})
 
                         filtered_gaze.append(section_gaze)
-            
-            np.save(os.path.join(save_path,'data_ordered_by_trial'),filtered_gaze)                       
+            if custom_tag:
+                np.save(os.path.join(save_path,'data_ordered_by_trial'+custom_tag),filtered_gaze)
+            else:         
+                np.save(os.path.join(save_path,'data_ordered_by_trial'),filtered_gaze)                       
         else:
             logger.error("Please, open the segmentation plugin.")
 
+    def export_all_precision(self):
+        segmentation = None
+        for p in self.g_pool.plugins:
+            if p.class_name == 'Segmentation':
+                if p.alive:
+                    segmentation = p
+                    break
+
+        segmentation.onset = 0.0
+        segmentation.offset = 1.5
+        for status in range(16):
+            tag = '_%s-%s'%(segmentation.onset,segmentation.offset)
+            tag = tag.replace('.','-')
+            logger.info(str(status)+tag)
+            self.precision_report(tag)
+            segmentation.onset += 0.1 
+            segmentation.offset -= 0.1
+        logger.info('end')
 
     def export_all_distances(self):
         segmentation = None
