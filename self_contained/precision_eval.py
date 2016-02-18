@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
-  Copyright (C) 2015 Rafael Picanço.
+  Copyright (C) 2016 Rafael Picanço.
 
   The present file is distributed under the terms of the GNU General Public License (GPL v3.0).
 
@@ -115,6 +115,8 @@ figure.tight_layout()
 
 show_points(g1, '1s')
 show_points(g2, '2s')
+
+# overall precision defined as the RMS of all observations
 
 x1 = 14.7720863025
 y1 = 8.81708901183

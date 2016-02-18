@@ -1,6 +1,6 @@
 ```
   Pupil Player Third Party Plugins by cpicanco
-  Copyright (C) 2015 Rafael Picanço.
+  Copyright (C) 2016 Rafael Picanço.
 
   Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
 

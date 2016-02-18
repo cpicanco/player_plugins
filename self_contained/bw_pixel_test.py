@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
-  Copyright (C) 2015 Rafael Picanço.
+  Copyright (C) 2016 Rafael Picanço.
 
   The present file is distributed under the terms of the GNU General Public License (GPL v3.0).
 
