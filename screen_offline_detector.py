@@ -467,8 +467,9 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                             if c_e:
                                 frame_idx+=sec.start
                                 for i, gp in enumerate(s.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
+                                    trial = segmentation.trial_from_timestamp(gp['base']['timestamp'])
                                     if gp['base']['confidence'] >= self.gaze_correction_min_confidence:
-                                        section_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos']})
+                                        section_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos'],'trial':trial})
 
                         filtered_gaze.append(section_gaze)
             if custom_tag:
