@@ -9,10 +9,8 @@
 '''
 # precision is defined as the Standard Deviation of successive observations
 
-# seccessive observations = every point inside the central 1 second temporal gap of 2 seconds recorded = cluster
+# seccessive observations = every point inside the temporal gaps along the 2 seconds recorded = cluster
 # Standard Deviation assumes that the mean of each cluster is at zero.  
-
-import scipy.spatial as sp
 
 import string
 import numpy as np
@@ -44,7 +42,7 @@ wdeg, hdeg = 15.3336085236, 9.15224758754
 source = '/home/rafael/documents/doutorado/data_doc/003-Natan/2015-05-13/precision_report/'
 paths = sorted(glob(join(source,'data_ordered_by_trial*')))
 
-# transform gaze positions from normalized to pixels than to degree
+# transform gaze positions from normalized to pixels, to degree
 def get_pixels_per_degree():
     return np.sqrt((width**2)+(height**2))/np.sqrt((wdeg**2)+(hdeg**2))
 
@@ -97,7 +95,6 @@ def root_mean_square(gp):
     return np.sqrt(np.mean(gp**2)), RMSX,RMSY
 
 def load_data(path):
-    global all_gaze
     all_gaze = []
     clusters = np.load(path)
     sds = []
@@ -114,21 +111,25 @@ def load_data(path):
         by_trial = pixel_to_degree(by_trial)
 
         # intermediate precision defined as the Standard Deviation of observations in the cluster/trial 
-        sds.append(np.std(by_trial, ddof=1))
+        sds.append(np.std(by_trial, ddof=1, dtype=np.float64))
         all_gaze.append(by_trial)
 
     # overall precision defined as the Standard Deviation of all observations
     all_gaze = np.vstack(all_gaze)
     
-    sd = np.std(all_gaze, ddof=0)
+    sd = np.std(all_gaze, ddof=0, dtype=np.float64)
     print 'sd:',round(sd,3)
 
+    # overall variance
+    var = np.var(all_gaze,ddof=0, dtype=np.float64)
+
+    # overall precision defined as the RMS of all observations (should be equal to SD when the mean = zero)
     rms = root_mean_square(all_gaze)
     print 'rms:',rms
     print ''
 
-    # overall precision defined as the RMS of all observations (should be equal to SD when the mean = zero)
-    return sd, sds, all_gaze
+   
+    return var, sd, sds, all_gaze
 
 def show_points(g,s, dimension):
     figure = plt.figure()
@@ -160,8 +161,8 @@ def get_data(axes, paths):
     for j, axcol in enumerate(axes):
         for i, axrow in enumerate(axcol):   
             #print paths[index]
-            sd, sds, g = load_data(paths[index])
-            data[j][i] = {'sd':sd, 'sds':sds, 'g':g, 'l':letters[index]}
+            var, sd, sds, g = load_data(paths[index])
+            data[j][i] = {'var':var,'sd':sd, 'sds':sds, 'g':g, 'l':letters[index]}
             index+=1        
     return data
 
@@ -190,13 +191,20 @@ def custom_subplots(axes, data, show_p=None):
             container.append(data[j][i]['g'])
             axrow.plot(sds,color=(.0,.0,.0,1.))
             axrow.plot([0,len(sds)], [sd, sd], color=(0.,0.,0.,.4))
-            axrow.yaxis.set_ticks([])
-            axrow.xaxis.set_ticks([])
             axrow.set_ylim(ymax=yMAX, ymin=0)
             axrow.set_xlim(xmax=96, xmin=0)
             axrow.text(0.05, .9,letter, ha='center', va='center', transform=axrow.transAxes)
             axrow.text(0.85, .9,'~%s°'%(round(sd,2)), ha='center', va='center', transform=axrow.transAxes)
+    
+    ax = axes[3][0]
+    ax.set_ylabel('Desvio padrão (graus)')
+    ax.yaxis.set_label_coords(-0.2, 1.)
+    ax.yaxis.set_ticks([0,round(yMAX, 2)])
 
+    ax = axes[5][1]
+    ax.set_xlabel('Tentativas')
+    ax.xaxis.set_ticks([0,48,96])
+    # ax.xaxis.set_label_coords(0.0, 0.0)
 
     if show_p:
         for data in container:
@@ -236,19 +244,19 @@ def custom_subplots_points(axes, data):
             #     axrow.text(1., -.08,'%s°'%round(wdeg-(wdeg/2),1), ha='center', va='center', transform=axrow.transAxes)
             #     axrow.text(0.09, -.08,'%s°'%round(-wdeg/2,1), ha='center', va='center', transform=axrow.transAxes)
                
-
-
 def main():  
     figsize = (8, 10)
     figure, axes = plt.subplots(6, 3, sharey=True, sharex=True, figsize=figsize)
 
     data = get_data(axes, paths)
     custom_subplots(axes, data)
-    figure.tight_layout()
+    figure.subplots_adjust(left=0.09, bottom=0.065, right=0.97,top=0.97,wspace=0.08, hspace=0.12)
 
-    #figure, axes = plt.subplots(6, 3, sharey=True, sharex=True, figsize=figsize)
+
+    figure, axes = plt.subplots(6, 3, sharey=True, sharex=True, figsize=figsize)
     custom_subplots_points(axes, data)
-    figure.tight_layout()
+    figure.subplots_adjust(left=0.04, bottom=0.04, right=0.97,top=0.97,wspace=0.03, hspace=0.07)
+
 
     plt.show()
 
