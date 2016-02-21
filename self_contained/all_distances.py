@@ -10,8 +10,23 @@
 import os
 import matplotlib.pyplot as plt
 import cv2
+import numpy as np
 
 from glob import glob
+
+# our screen surface
+global width, height
+width, height = 1280,764
+
+# phisical measurement of the screen projection
+global wdeg, hdeg
+wdeg, hdeg = 15.3336085236, 9.15224758754
+
+# pixels per degree
+global px
+
+def get_pixels_per_degree():
+    return np.sqrt((width**2)+(height**2))/np.sqrt((wdeg**2)+(hdeg**2))
 
 # load image file as numpy array
 folders = ['distance_0-640-329',
@@ -26,6 +41,9 @@ folders = ['distance_0-640-329',
            'distance_135-467-447',
            'distance_135-507-407',
            'distance_135-546-368']
+
+px = get_pixels_per_degree()
+print px * 1.3
 
 figure, axes = plt.subplots()
 for folder in folders:
@@ -50,18 +68,35 @@ print img_surface.shape
 axes.plot([0,img_surface.shape[1]], [img_surface.shape[0]/2,img_surface.shape[0]/2],color=(.5,.5,.5,.5))
 
 # x
-axes.plot([img_surface.shape[1]/2,img_surface.shape[1]/2],[0,img_surface.shape[0]/2],color=(.5,.5,.5,.5))
+axes.plot([img_surface.shape[1]/2,img_surface.shape[1]/2],[0,img_surface.shape[0]],color=(.5,.5,.5,.5))
+axes.text(.55, .95,"~9.2", ha='center', va='center', transform=axes.transAxes)
+axes.text(.95, .55,"~15.2", ha='center', va='center', transform=axes.transAxes)
 
 #axes.xaxis.set_ticks_position('none')
-axes.yaxis.set_ticks([0, 764])
+axes.yaxis.set_ticks([(height/2)+(px*1.3*x) for x in range(-2,3)])
+axes.set_yticklabels([round(1.3*x,2) for x in range(0,5)])
 axes.yaxis.set_ticks_position('none')
-axes.xaxis.set_ticks([0, 1280]) 
+axes.set_ylabel("Altura(graus)")
+
+axes.xaxis.set_ticks([(width/2)+(px*1.3*x) for x in range(-2,3)])
+axes.set_xticklabels([round(1.3*x,2) for x in range(0,5)])
+axes.xaxis.set_ticks_position('none')
+axes.set_xlabel("Comprimento(graus)")
+
 axes.spines['top'].set_visible(False)
 axes.spines['bottom'].set_visible(False)
 axes.spines['left'].set_visible(False)
 axes.spines['right'].set_visible(False)
 
-figure.subplots_adjust(wspace=0.1,left=0.06, right=.95,bottom=0.0,top=0.99)
+# axes2 = axes.twinx()
+# axes2.spines['top'].set_visible(False)
+# axes2.spines['bottom'].set_visible(False)
+# axes2.spines['left'].set_visible(False)
+# axes2.spines['right'].set_visible(False)
+# axes2.set_ylim(ymax = img_surface.shape[0], ymin = 0)
+# axes2.set_xlim(xmax = img_surface.shape[1], xmin = 0)
+
+figure.subplots_adjust(left=0.09, bottom=0.0, right=.97,top=1.)
 
 plt.ylim(ymax = img_surface.shape[0], ymin = 0)
 plt.xlim(xmax = img_surface.shape[1], xmin = 0)
