@@ -607,7 +607,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 except:
                     logger.warning("Could not make metrics_dir %s"%export_path)
                     return
-           
+
             metrics_dir = os.path.join(export_path,"metrics_%s-%s"%(in_mark,out_mark))
             if os.path.isdir(metrics_dir):
                 logger.info("Will overwrite metrics_dir")
@@ -621,26 +621,26 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.recalculate()
             self.save_surface_statsics_to_file(slice(in_mark,out_mark), metrics_dir)
 
-            metrics_dir = os.path.join(metrics_dir,'surfaces')
+            surface_dir = os.path.join(metrics_dir,'surfaces')
 
             for s in self.surfaces:
                 surface_name = '_'+s.name.replace('/','')+'_'+s.uid
                 if s.heatmap is not None:
                     logger.info("Saved Heatmap as .png file.")
-                    cv2.imwrite(os.path.join(metrics_dir,'heatmap'+surface_name+'.png'),s.heatmap)
+                    cv2.imwrite(os.path.join(surface_dir,'heatmap'+surface_name+'.png'),s.heatmap)
 
                 if s.gaze_cloud is not None:
                     logger.info("Saved Gaze Cloud as .png file.")
-                    cv2.imwrite(os.path.join(metrics_dir,'gaze_cloud'+surface_name+'.png'),s.gaze_cloud)
+                    cv2.imwrite(os.path.join(surface_dir,'gaze_cloud'+surface_name+'.png'),s.gaze_cloud)
 
                 if s.gaze_correction is not None:
                     logger.info("Saved Gaze Correction as .png file.")
-                    cv2.imwrite(os.path.join(metrics_dir,'gaze_correction'+surface_name+'.png'),s.gaze_correction)
+                    cv2.imwrite(os.path.join(surface_dir,'gaze_correction'+surface_name+'.png'),s.gaze_correction)
 
-                surface_path = os.path.join(metrics_dir,'surface'+surface_name+'.png')
+                surface_path = os.path.join(surface_dir,'surface'+surface_name+'.png')
 
                 # export a surface image from the center of the section for visualization purposes only
-                self.export_section_image(metrics_dir, s, in_mark, out_mark, surface_path)
+                self.export_section_image(surface_dir, s, in_mark, out_mark, surface_path)
 
                 # lets create alternative versions of the surfaces *.pngs
                 src1 = cv2.imread(surface_path)
@@ -649,12 +649,12 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
                 for c in s.output_data['kmeans']:
                     cv2.circle(src1, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
-                cv2.imwrite(os.path.join(metrics_dir,'surface-gaze_cloud'+surface_name+'.png'),src1)
+                cv2.imwrite(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.png'),src1)
 
-                np.savetxt(os.path.join(metrics_dir,'surface-gaze_cloud'+surface_name+'.txt'), s.output_data['gaze'])
-                #src2 = cv2.imread(os.path.join(metrics_dir,'heatmap'+surface_name+'.png'))
+                np.savetxt(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.txt'), s.output_data['gaze'])
+                #src2 = cv2.imread(os.path.join(surface_dir,'heatmap'+surface_name+'.png'))
                 #dst = cv2.addWeighted(src1, .9, src2, .1, 0.0);                
-                #cv2.imwrite(os.path.join(metrics_dir,'surface-heatmap'+surface_name+'.png'),dst)
+                #cv2.imwrite(os.path.join(surface_dir,'surface-heatmap'+surface_name+'.png'),dst)
             
             self.g_pool.capture.seek_to_frame(in_mark)
             logger.info("Done exporting reference surface data.")

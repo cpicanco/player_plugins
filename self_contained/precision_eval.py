@@ -21,19 +21,11 @@ import sys
 
 from glob import glob
 
+import constants as K
+from methods import normalized_to_pixel, pixel_to_degree, move_mean_to_zero, root_mean_square
+
 reload(sys)  
 sys.setdefaultencoding('utf8')
-
-# our screen surface
-global width, height
-width, height = 1280,764
-
-# phisical measurement of the screen projection
-global wdeg, hdeg
-wdeg, hdeg = 15.3336085236, 9.15224758754
-
-# global wdeg, hdeg
-# wdeg,hdeg = 14.7720863025,8.81708901183
 
 # here we expect 24 clusters (2 responses- 4 angles - 3 distance)
 # path = '/home/rafael/documents/doutorado/data_doc/003-Natan/2015-05-13/precision_report/data_ordered_by_metatag.npy'
@@ -41,58 +33,6 @@ wdeg, hdeg = 15.3336085236, 9.15224758754
 # here we expect 96 clusters (2 responses- 4 angles - 3 distance - 4 - trials)
 source = '/home/rafael/documents/doutorado/data_doc/003-Natan/2015-05-13/precision_report/'
 paths = sorted(glob(join(source,'data_ordered_by_trial*')))
-
-# transform gaze positions from normalized to pixels, to degree
-def get_pixels_per_degree():
-    return np.sqrt((width**2)+(height**2))/np.sqrt((wdeg**2)+(hdeg**2))
-
-def get_values_per_degree():
-    return np.sqrt((1**2)+(1**2))/np.sqrt((wdeg**2)+(hdeg**2))
-
-def normalized_to_pixel(gp):
-    """
-    gp:numpy.array.shape(x, 2)
-    """
-    gp[:,0] *= width
-    gp[:,1] *= height
-    return gp
-
-def pixel_to_degree(gp):
-    """
-    gp:numpy.array.shape(x, 2)
-    """
-    pixels_per_degree = get_pixels_per_degree()
-    gp[:,0] /= pixels_per_degree
-    gp[:,1] /= pixels_per_degree
-    return gp
-
-def normalized_to_degree(gp):
-    """
-    gp:numpy.array.shape(x, 2)
-    """
-    values_per_degree = get_values_per_degree()
-    gp[:,0] /= values_per_degree
-    gp[:,1] /= values_per_degree
-    return gp
-
-def move_mean_to_zero(gp):
-    """
-    gp:numpy.array.shape(x, 2)
-    """
-    MX = np.mean(gp[:,0])
-    MY = np.mean(gp[:,1])
-    gp[:,0] = MX - gp[:,0]
-    gp[:,1] = MY - gp[:,1]
-    return gp
-
-def root_mean_square(gp):
-    """
-    gp:numpy.array.shape(x, 2)
-    """
-    RMSX = np.sqrt(np.mean(gp[:,0]**2))
-    RMSY = np.sqrt(np.mean(gp[:,1]**2))
-    # return np.sqrt((RMSX**2)+(RMSY**2))
-    return np.sqrt(np.mean(gp**2)), RMSX,RMSY
 
 def load_data(path):
     all_gaze = []
@@ -143,11 +83,11 @@ def show_points(g,s, dimension):
     X = g[:,0]
     Y = g[:,1]
     if 'pixels' in dimension:
-        plt.ylim(ymax=height-(height/2), ymin=-(height/2))
-        plt.xlim(xmax=width-(width/2), xmin=-(width/2))
+        plt.ylim(ymax=K.SCREEN_HEIGHT_PX-(K.SCREEN_HEIGHT_PX/2), ymin=-(K.SCREEN_HEIGHT_PX/2))
+        plt.xlim(xmax=K.SCREEN_WIDTH_PX-(K.SCREEN_WIDTH_PX/2), xmin=-(K.SCREEN_WIDTH_PX/2))
     elif 'degrees' in dimension:
-        plt.ylim(ymax=(hdeg-(hdeg/2)), ymin=-(hdeg/2))
-        plt.xlim(xmax=(wdeg-(wdeg/2)), xmin=-(wdeg/2))
+        plt.ylim(ymax=(K.SCREEN_HEIGHT_DEG-(K.SCREEN_HEIGHT_DEG/2)), ymin=-(K.SCREEN_HEIGHT_DEG/2))
+        plt.xlim(xmax=(K.SCREEN_WIDTH_DEG-(K.SCREEN_WIDTH_DEG/2)), xmin=-(K.SCREEN_WIDTH_DEG/2))
     elif 'normalized' in dimension:
         plt.ylim(ymax=(1.-(1./2.)), ymin=-(1./2.))
         plt.xlim(xmax=(1.-(1./2.)), xmin=-(1./2.))
@@ -227,22 +167,22 @@ def custom_subplots_points(axes, data):
             g = data[j][i]['g']
             X = g[:,0]
             Y = g[:,1]
-            axrow.plot([0,0], [hdeg-(hdeg/2),-hdeg/2], color=(0.,0.,0.,.1))
-            axrow.plot([wdeg-(wdeg/2),-wdeg/2],[0,0], color=(0.,0.,0.,.1))
+            axrow.plot([0,0], [K.SCREEN_HEIGHT_DEG-(K.SCREEN_HEIGHT_DEG/2),-K.SCREEN_HEIGHT_DEG/2], color=(0.,0.,0.,.1))
+            axrow.plot([K.SCREEN_WIDTH_DEG-(K.SCREEN_WIDTH_DEG/2),-K.SCREEN_WIDTH_DEG/2],[0,0], color=(0.,0.,0.,.1))
 
             axrow.plot(X,Y,'k.', markersize=0.5)
             # axrow.yaxis.set_ticks([])
             # axrow.xaxis.set_ticks([])
-            axrow.set_ylim(ymax=(hdeg-(hdeg/2)), ymin=-(hdeg/2))
-            axrow.set_xlim(xmax=(wdeg-(wdeg/2)), xmin=-(wdeg/2))
+            axrow.set_ylim(ymax=(K.SCREEN_HEIGHT_DEG-(K.SCREEN_HEIGHT_DEG/2)), ymin=-(K.SCREEN_HEIGHT_DEG/2))
+            axrow.set_xlim(xmax=(K.SCREEN_WIDTH_DEG-(K.SCREEN_WIDTH_DEG/2)), xmin=-(K.SCREEN_WIDTH_DEG/2))
             axrow.text(0.95, .9,letter, ha='center', va='center', transform=axrow.transAxes)
             axrow.text(0.85, .6,'~%s°'%(round(sd,2)), ha='center', va='center', transform=axrow.transAxes)
             # if i == 0 and j == 0:
-            #     axrow.text(0.09, .9,'%s°'%round(hdeg-(hdeg/2),1), ha='center', va='center', transform=axrow.transAxes)
-            #     axrow.text(0.09, .1,'%s°'%round(-hdeg/2,1), ha='center', va='center', transform=axrow.transAxes)
+            #     axrow.text(0.09, .9,'%s°'%round(K.SCREEN_HEIGHT_DEG-(K.SCREEN_HEIGHT_DEG/2),1), ha='center', va='center', transform=axrow.transAxes)
+            #     axrow.text(0.09, .1,'%s°'%round(-K.SCREEN_HEIGHT_DEG/2,1), ha='center', va='center', transform=axrow.transAxes)
                 
-            #     axrow.text(1., -.08,'%s°'%round(wdeg-(wdeg/2),1), ha='center', va='center', transform=axrow.transAxes)
-            #     axrow.text(0.09, -.08,'%s°'%round(-wdeg/2,1), ha='center', va='center', transform=axrow.transAxes)
+            #     axrow.text(1., -.08,'%s°'%round(K.SCREEN_WIDTH_DEG-(K.SCREEN_WIDTH_DEG/2),1), ha='center', va='center', transform=axrow.transAxes)
+            #     axrow.text(0.09, -.08,'%s°'%round(-K.SCREEN_WIDTH_DEG/2,1), ha='center', va='center', transform=axrow.transAxes)
                
 def main():  
     figsize = (8, 10)

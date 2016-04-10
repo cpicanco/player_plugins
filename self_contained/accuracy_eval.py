@@ -23,17 +23,11 @@ import sys
 import cv2
 from glob import glob
 
+import constants as K
+from methods import normalized_to_pixel
+
 reload(sys)  
 sys.setdefaultencoding('utf8')
-
-# our screen surface
-global width, height
-width, height = 1280,764
-
-# phisical measurement of the screen projection
-global wdeg, hdeg
-wdeg, hdeg = 15.3336085236, 9.15224758754
-
 
 def load_scapp_report(scapp_report_path):
     """
@@ -73,9 +67,6 @@ def load_scapp_report(scapp_report_path):
     else:
         print "File not found: "+ scapp_report_path
 
-# global wdeg, hdeg
-# wdeg,hdeg = 14.7720863025,8.81708901183
-
 # here we expect 24 clusters (2 responses- 4 angles - 3 distance)
 # path = '/home/rafael/documents/doutorado/data_doc/003-Natan/2015-05-13/precision_report/data_ordered_by_metatag.npy'
 
@@ -84,25 +75,6 @@ source = '/home/rafael/documents/doutorado/data_doc/003-Natan/2015-05-13/'
 scapp_report = load_scapp_report(os.path.join(source,'scapp_report.data'))
 paths = sorted(glob(os.path.join(source,'precision_report/data_ordered_by_trial*')))
 # transform gaze positions from normalized to pixels than to degree
-def get_pixels_per_degree():
-    return np.sqrt((width**2)+(height**2))/np.sqrt((wdeg**2)+(hdeg**2))
-
-def normalized_to_pixel(gp):
-    """
-    gp:numpy.array.shape(x, 2)
-    """
-    gp[:,0] *= width
-    gp[:,1] *= height
-    return gp
-
-def pixel_to_degree(gp):
-    """
-    gp:numpy.array.shape(x, 2)
-    """
-    pixels_per_degree = get_pixels_per_degree()
-    gp[:,0] /= pixels_per_degree
-    gp[:,1] /= pixels_per_degree
-    return gp
 
 def load_data(path):
     def get_realXY_from_trial(trial):
@@ -114,7 +86,7 @@ def load_data(path):
             realY = scapp_report[trial]['Y1']+55
         else:
             raise "Missing Value on Report"
-        return (width-realX, realY)    
+        return (K.SCREEN_WIDTH_PX-realX, realY)    
     
     realXY = [get_realXY_from_trial(i) for i in range(len(scapp_report))]
 
@@ -196,7 +168,6 @@ def show_points(X,Y):
     #plt.legend()
 
 def custom_subplots(axes, data):
-    px = get_pixels_per_degree()
     container = []
     for i, axrow in enumerate(axes):
         for j, axcol in enumerate(axrow):
@@ -222,18 +193,18 @@ def custom_subplots(axes, data):
             #         if dc['real'] == (trial['r'][0][0],trial['r'][0][1]):
             #             error = distance.cdist(np.vstack(trial['g']),np.vstack(trial['r'])).diagonal().copy()
             #             dc['error'].append(error)
-            #     error_by_stimulus.append(np.mean(np.hstack(dc['error']))/px)
+            #     error_by_stimulus.append(np.mean(np.hstack(dc['error']))/K.PIXELS_PER_DEGREE)
             sd = []
             error_by_trial = []
             for trial in by_trial:
                 error = distance.cdist(np.vstack(trial['g']),np.vstack(trial['r'])).diagonal().copy()
-                error_by_trial.append(np.mean(error)/px)
-                sd.append(np.std(error)/px)
+                error_by_trial.append(np.mean(error)/K.PIXELS_PER_DEGREE)
+                sd.append(np.std(error)/K.PIXELS_PER_DEGREE)
             # for trial in by_trial: # pupil's implementation is faster
             #     error = []
             #     for g, r in zip(trial['g'],trial['r']):
             #         error.append(distance.euclidean(g, r))
-            #     error_by_trial.append(np.mean(error)/px) 
+            #     error_by_trial.append(np.mean(error)/K.PIXELS_PER_DEGREE) 
 
             error_global = []
             for trial in by_trial:
@@ -244,14 +215,14 @@ def custom_subplots(axes, data):
             #         error_global.append(distance.euclidean(g, r))
 
             error_global = np.hstack(error_global)
-            error_global = np.mean(error_global)/px
+            error_global = np.mean(error_global)/K.PIXELS_PER_DEGREE
 
             # axcol.plot(error_by_stimulus, color=(.0,.0,.0,1.)) 
             axcol.errorbar(range(1,97),error_by_trial, sd,color=(.0,.0,.0,1.),linestyle='None', marker='o', markersize=1,capthick=0,ecolor=(.0,.0,.0,.4))                     
             axcol.text(0.05, .9,letter, ha='center', va='center', transform=axcol.transAxes)
             axcol.text(0.85, .9,'~%s°'%(round(error_global,2)), ha='center', va='center', transform=axcol.transAxes)
 
-            #show_points(ex_by_trial/px,ey_by_trial/px)
+            #show_points(ex_by_trial/K.PIXELS_PER_DEGREE,ey_by_trial/K.PIXELS_PER_DEGREE)
     ax = axes[3][0]
     ax.set_ylabel('Distância euclidiana média (graus)')
     ax.yaxis.set_label_coords(-0.15, 1.)
@@ -263,7 +234,6 @@ def custom_subplots(axes, data):
     # ax.xaxis.set_label_coords(0.0, 0.0)
 
 def custom_subplots_lines(axes, data):
-    px = get_pixels_per_degree()
     container = []
     for i, axrow in enumerate(axes):
         for j, axcol in enumerate(axrow):
@@ -294,8 +264,8 @@ def custom_subplots_lines(axes, data):
                 linesX.append([c_r['real'][0],np.mean(c_r['gaze'][:,0]), np.nan])
                 linesY.append([c_r['real'][1],np.mean(c_r['gaze'][:,1]), np.nan]) 
       
-            linesX = np.hstack(linesX/px)
-            linesY = np.hstack(linesY/px)
+            linesX = np.hstack(linesX/K.PIXELS_PER_DEGREE)
+            linesY = np.hstack(linesY/K.PIXELS_PER_DEGREE)
 
             # error_x = []
             # error_y = []
@@ -304,19 +274,19 @@ def custom_subplots_lines(axes, data):
             #     error_y.append([g[1],r[1],np.nan])
 
 
-            # error_y = np.hstack(error_y/px)
-            # error_x = np.hstack(error_x/px)
+            # error_y = np.hstack(error_y/K.PIXELS_PER_DEGREE)
+            # error_x = np.hstack(error_x/K.PIXELS_PER_DEGREE)
             
             # axcol.plot(error_x, error_y, linewidth=0.5, color=(.0,.0,.0,.2))
-            axcol.plot(realXY[:,0]/px,realXY[:,1]/px, '.',color=(.0,.0,.0,1.), markersize=1.8)           
+            axcol.plot(realXY[:,0]/K.PIXELS_PER_DEGREE,realXY[:,1]/K.PIXELS_PER_DEGREE, '.',color=(.0,.0,.0,1.), markersize=1.8)           
             axcol.plot(linesX, linesY, color=(0.,.0,.0,.3))
             axcol.text(0.05, .9,letter, ha='center', va='center', transform=axcol.transAxes)
             #axcol.text(0.85, .9,'~%s°'%(round(sd,2)), ha='center', va='center', transform=axrow.transAxes)
 
-            # axcol.plot([MU[0]/px,((width/2)+4)/px], [MU[1]/px,(height/2)/px], color=(0.,.0,.0,1.))
+            # axcol.plot([MU[0]/K.PIXELS_PER_DEGREE,((K.SCREEN_WIDTH_PX/2)+4)/K.PIXELS_PER_DEGREE], [MU[1]/K.PIXELS_PER_DEGREE,(K.SCREEN_HEIGHT_PX/2)/K.PIXELS_PER_DEGREE], color=(0.,.0,.0,1.))
 
-            plt.ylim(ymax=height/px, ymin=0)
-            plt.xlim(xmax=width/px, xmin=0)    
+            plt.ylim(ymax=K.SCREEN_HEIGHT_PX/K.PIXELS_PER_DEGREE, ymin=0)
+            plt.xlim(xmax=K.SCREEN_WIDTH_PX/K.PIXELS_PER_DEGREE, xmin=0)    
 
 # def stuff(realXY):
 #     # load image file as numpy array

@@ -17,22 +17,7 @@ import math
 from colormaps import viridis
 from glob import glob
 
-def get_visual_angle(xaxis=True):
-  # http://en.wikipedia.org/wiki/Visual_angle
-  # distances in cm
-  # object size
-  S = 70.0
-  # how far distance
-  D = 260.0
-  # visual angle
-  V = 2 * math.atan( S/(D*2) )
-  # print 'Radians:', V
-  degrees = math.degrees(V)
-  if xaxis:
-    return degrees
-  else:
-    return (764*degrees)/1280
-    
+import constants as K
 
 # load image file as numpy array
 path = '/home/rafael/documents/doutorado/data_doc/003-Natan/2015-05-13/'
@@ -65,7 +50,7 @@ plt.yticks(np.arange(0, img_surface.shape[0]+1, (img_surface.shape[0]+1)/7))
 
 # x axis
 labels = [item.get_text() for item in axes.get_xticklabels()]
-angle = get_visual_angle()
+angle = K.SCREEN_WIDTH_DEG
 print 'x:',angle
 factor = (angle+1.5)/len(labels)
 tlabels = np.arange(0,angle+factor,(angle+factor)/len(labels))
@@ -76,7 +61,7 @@ axes.set_xticklabels(labels)
 
 # y axis
 labels = [item.get_text() for item in axes.get_yticklabels()]
-angle = get_visual_angle(False)
+angle = K.SCREEN_HEIGHT_DEG
 print 'y:',angle
 factor = (angle+1.5)/len(labels)
 tlabels = np.arange(0,angle+factor,(angle+factor)/len(labels))

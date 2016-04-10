@@ -377,12 +377,10 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             sections = [[sections.start,sections.stop]]
 
         for sec in sections:
-            in_mark = sec[0]
-            out_mark = sec[1]
-            sec = slice(in_mark,out_mark)
-            for frame_idx,c_e in enumerate(self.cache[sec]):
+            section = slice(sec[0],sec[1])
+            for frame_idx,c_e in enumerate(self.cache[section]):
                 if c_e:
-                    frame_idx+=sec.start
+                    frame_idx += section.start
                     for i, gp in enumerate(self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
                         if gp['on_srf']:
                             if gp['base']['confidence'] >= self.gaze_correction_min_confidence:

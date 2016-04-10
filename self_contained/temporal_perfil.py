@@ -123,9 +123,9 @@ if __name__ == '__main__':
 
     # rpath = '/home/rafael/documents/doutorado/data_doc/006-Renan/2015-05-20/'
     # rpath = '/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-19/'
-    # rpath = '/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/' # beatiful
-    # rpath = '/home/rafael/documents/doutorado/data_doc/007-Gabriel/2015-05-20/' # beatiful
-    # rpath = '/home/rafael/documents/doutorado/data_doc/010-Iguaracy/2015-05-25/' # beatiful
+    # rpath = '/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/' # beautiful
+    # rpath = '/home/rafael/documents/doutorado/data_doc/007-Gabriel/2015-05-20/' # beautiful
+    # rpath = '/home/rafael/documents/doutorado/data_doc/010-Iguaracy/2015-05-25/' # beautiful
     # rpath = '/home/rafael/documents/doutorado/data_doc/011-Priscila/2015-05-26/'
     # rpath = '/home/rafael/documents/doutorado/data_doc/013-Oziele/2015-05-26/'
 
