@@ -55,6 +55,16 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
     def __init__(self,g_pool,mode="Show Screen"):
         super(Offline_Screen_Detector, self).__init__(g_pool)
         #self.g_pool = g_pool
+        Trim_Marks_Extended_Exist = False
+        for p in g_pool.plugins:
+            if p.class_name == 'Trim_Marks_Extended':
+                Trim_Marks_Extended_Exist = True
+                break
+
+        if not Trim_Marks_Extended_Exist:
+            from trim_marks_patch import Trim_Marks_Extended
+            g_pool.plugins.add(Trim_Marks_Extended)
+            del Trim_Marks_Extended
 
         # heatmap
         self.heatmap_blur = True
@@ -205,7 +215,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.menu.append(ui.Button("Add screen surface",lambda:self.add_surface('_')))
         
         self.menu.append(ui.Info_Text('Export gaze metrics. We recalculate metrics for each section when exporting all sections. Press the recalculate button before export the current selected section.'))
-        self.menu.append(ui.Button("Export current section", self.save_surface_statsics_to_file))
+        self.menu.append(ui.Info_Text("Press the export button or type 'e' to start the export for the current section."))
         self.menu.append(ui.Button("Export all sections", self.export_all_sections))
 
         self.menu.append(ui.Info_Text('Requires segmentation plugin.'))
@@ -378,7 +388,8 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                     break
 
         if (segmentation is not None) and sections_alive:
-            save_path = os.path.join(self.g_pool.rec_dir,"precision_report")
+            export_path = os.path.join(self.g_pool.rec_dir,'exports')
+            save_path = os.path.join(export_path,"precision_report")
             if os.path.isdir(save_path):
                 logger.info("Overwriting data on precision_report")
             else:
@@ -517,8 +528,8 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
                 # generate visualizations and data
                 self.recalculate_all_sections()
-
-                save_path = os.path.join(self.g_pool.rec_dir,"distance_%s-%s-%s"%unique_distance)
+                export_path = os.path.join(self.g_pool.rec_dir,'exports')
+                save_path = os.path.join(export_path,"distance_%s-%s-%s"%unique_distance)
 
                 if os.path.isdir(save_path):
                     logger.info("Overwriting data on distance %s-%s-%s"%unique_distance)
@@ -558,7 +569,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.g_pool.capture.seek_to_frame(seek_pos)
         new_frame = self.g_pool.capture.get_frame()
         frame = new_frame.copy()
-        self.update(frame, None)
+        self.update(frame, {})
         if s.detected and frame.img is not None:
             #here we get the verts of the surface quad in norm_coords
             mapped_space_one = np.array(((0,0),(1,0),(1,1),(0,1)),dtype=np.float32).reshape(-1,1,2)
@@ -587,10 +598,31 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.g_pool.trim_marks.focus = self.g_pool.trim_marks.sections.index(section)
             in_mark = self.g_pool.trim_marks.in_mark
             out_mark = self.g_pool.trim_marks.out_mark
-            metrics_dir = os.path.join(self.g_pool.rec_dir,"metrics_%s-%s"%(in_mark,out_mark))
+            export_path = export_path = os.path.join(self.g_pool.rec_dir,'exports')
+            if os.path.isdir(export_path):
+                logger.info("Will overwrite export_path")
+            else:
+                try:
+                    os.mkdir(export_path)
+                except:
+                    logger.warning("Could not make metrics_dir %s"%export_path)
+                    return
+           
+            metrics_dir = os.path.join(export_path,"metrics_%s-%s"%(in_mark,out_mark))
+            if os.path.isdir(metrics_dir):
+                logger.info("Will overwrite metrics_dir")
+            else:
+                try:
+                    os.mkdir(metrics_dir)
+                except:
+                    logger.warning("Could not make metrics_dir %s"%metrics_dir)
+                    return
 
             self.recalculate()
-            self.save_surface_statsics_to_file()
+            self.save_surface_statsics_to_file(slice(in_mark,out_mark), metrics_dir)
+
+            metrics_dir = os.path.join(metrics_dir,'surfaces')
+
             for s in self.surfaces:
                 surface_name = '_'+s.name.replace('/','')+'_'+s.uid
                 if s.heatmap is not None:
@@ -624,7 +656,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
                 #dst = cv2.addWeighted(src1, .9, src2, .1, 0.0);                
                 #cv2.imwrite(os.path.join(metrics_dir,'surface-heatmap'+surface_name+'.png'),dst)
             
-            self.g_pool.capture.seek_to_frame(seek_pos)
+            self.g_pool.capture.seek_to_frame(in_mark)
             logger.info("Done exporting reference surface data.")
 
     def get_init_dict(self):
