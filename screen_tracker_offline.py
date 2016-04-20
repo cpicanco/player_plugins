@@ -32,8 +32,8 @@ from pyglui import ui
 from pyglui.cygl.utils import *
 
 from file_methods import Persistent_Dict
-from screen_detector import Screen_Detector
-from offline_marker_detector import Offline_Marker_Detector
+from screen_tracker import Screen_Tracker
+from offline_surface_tracker import Offline_Surface_Tracker
 from square_marker_detect import draw_markers,m_marker_to_screen
 from offline_reference_surface_patch import Offline_Reference_Surface_Extended
 
@@ -42,10 +42,10 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# first will look into Offline_Marker_Detector namespaces then Screen_Detector and so on
-class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
+# first will look into Offline_Surface_Tracker namespaces then Screen_Tracker and so on
+class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
     """
-    Special version of screen detector for use with videofile source.
+    Special version of screen tracker for use with videofile source.
     It uses a seperate process to search all frames in the world.avi file for markers.
      - self.cache is a list containing marker positions for each frame.
      - self.surfaces[i].cache is a list containing surface positions for each frame
@@ -53,7 +53,6 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
     See marker_tracker.py for more info on this marker tracker.
     """
     def __init__(self,g_pool,mode="Show Screen"):
-        super(Offline_Screen_Detector, self).__init__(g_pool)
         #self.g_pool = g_pool
         Trim_Marks_Extended_Exist = False
         for p in g_pool.plugins:
@@ -74,6 +73,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.gaze_correction_min_confidence = 0.98
         self.gaze_correction_k = 2
         self.heatmap_use_kdata = True
+        super(Offline_Screen_Tracker, self).__init__(g_pool)
 
     def load_surface_definitions_from_file(self):
         self.surface_definitions = Persistent_Dict(os.path.join(self.g_pool.rec_dir,'surface_definitions'))
@@ -88,7 +88,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             self.surfaces = []
 
     def init_gui(self):
-        self.menu = ui.Scrolling_Menu('Offline Screen Detector')
+        self.menu = ui.Scrolling_Menu('Offline Screen Tracker')
         self.g_pool.gui.append(self.menu)
 
         self.add_button = ui.Thumb('add_surface',setter=self.add_surface,getter=lambda:False,label='Add Surface',hotkey='a')
@@ -106,7 +106,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.cache_queue = Queue()
         self.cacher_seek_idx = Value('i',0)
         self.cacher_run = Value(c_bool,True)
-        self.cacher = Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter))
+        self.cacher = Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter_cacher))
         self.cacher.start()
 
     def screen_segmentation(self):
@@ -182,10 +182,14 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.update_gui_markers()
       
     def update_gui_markers(self):
+
+        def close():
+            self.alive = False
+
         self.menu.elements[:] = []
-        self.menu.append(ui.Button('Close',self.close))
+        self.menu.append(ui.Button('Close',close))
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
-        self.menu.append(ui.Selector('mode',self,setter=self.set_mode,label='Mode',selection=["Show Markers and Frames","Show marker IDs", "Surface edit mode","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
+        self.menu.append(ui.Selector('mode',self,setter=self.set_mode,label='Mode',selection=["Show Markers and Surfaces","Show marker IDs","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
         
         if self.mode == 'Surface edit mode':
             self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
@@ -260,7 +264,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         self.update_gui_markers()
 
     # def update(self,frame,events):
-    #     super(Offline_Screen_Detector, self).update(frame, events)
+    #     super(Offline_Screen_Tracker, self).update(frame, events)
     #     # locate surfaces
     #     for s in self.surfaces:
     #         if not s.locate_from_cache(frame.index):
@@ -271,7 +275,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
 
 
     def recalculate(self):
-        #super(Offline_Screen_Detector, self).recalculate()
+        #super(Offline_Screen_Tracker, self).recalculate()
         # calc heatmaps
         in_mark = self.g_pool.trim_marks.in_mark
         out_mark = self.g_pool.trim_marks.out_mark
@@ -357,7 +361,7 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
         """
         Display marker and surface info inside world screen
         """
-        super(Offline_Screen_Detector, self).gl_display()
+        super(Offline_Screen_Tracker, self).gl_display()
 
         if self.mode == "Show Gaze Cloud":
             for s in self.surfaces:
@@ -667,5 +671,5 @@ class Offline_Screen_Detector(Offline_Marker_Detector,Screen_Detector):
             logger.info('Gaze positions changed. Please, recalculate.')
             #self.recalculate()
 
-del Screen_Detector
-del Offline_Marker_Detector
+del Screen_Tracker
+del Offline_Surface_Tracker

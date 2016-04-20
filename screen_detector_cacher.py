@@ -22,11 +22,7 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
     logger.debug('Started cacher process for Marker Detector')
     import cv2
     from video_capture import File_Capture, EndofVideoFileError,FileSeekError
-    
-    ###hack###
-    from screen_detector_methods import detect_markers_robust
-    ###/hack###
-    
+    from screen_detector_methods import detect_screens
     aperture = 9
     markers = []
     cap = File_Capture(video_file_path,timestamps=timestamps)
@@ -78,13 +74,7 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
             q.put((next,[])) # we cannot look at the frame, report no detection
             return
 
-        markers[:] = detect_markers_robust(frame.gray,
-                                        grid_size = 5,
-                                        prev_markers=markers,
-                                        min_marker_perimeter=min_marker_perimeter,
-                                        aperture=aperture,
-                                        visualize=0,
-                                        true_detect_every_frame=1)
+        markers[:] = detect_screens(frame.gray)
 
         visited_list[frame.index] = True
         q.put((frame.index,markers[:])) #object passed will only be pickeled when collected from other process! need to make a copy ot avoid overwrite!!!
@@ -109,4 +99,5 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
     logger.debug("Closing Cacher Process")
     cap.close()
     q.close()
+    run.value = False
     return

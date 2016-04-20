@@ -334,8 +334,9 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
         if not all_gaze:
             logger.warning("No gaze data on surface for gaze cloud found.")
-            all_gaze.append((-1., -1.))
-
+            # all_gaze.append((-1., -1.))
+            return
+            
         all_gaze = np.array(all_gaze)
 
         img = np.zeros((y_size,x_size,4), np.uint8)
