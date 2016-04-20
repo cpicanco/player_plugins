@@ -23,6 +23,7 @@ from plugin import Plugin
 
 import logging
 
+import zmq
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING) 
@@ -348,7 +349,17 @@ class Segmentation(Plugin):
         self.trim_marks.sections = sections
         self.trim_marks.focus = 0
 
+    def auto_trim_first_last(self):
+        # create sections and pass them to the trim_marks
+        sections = []
+        events = sorted(self.custom_events, key=int)
+        sections.append([events[0],events[-1]])
+
+        self.trim_marks.sections = sections
+        self.trim_marks.focus = 0
+
     def init_gui(self):
+        print zmq.zmq_version()
         # initialize the menu
         self.menu = ui.Scrolling_Menu('Segmentation')
         # add ui elements to the menu
@@ -360,9 +371,12 @@ class Segmentation(Plugin):
         self.menu.append(ui.Hot_Key('event_undo',setter=self.event_undo,getter=lambda:True,label=',',hotkey=GLFW_KEY_COMMA))
         self.menu.append(ui.Button('Save Events',self.save_custom_events))
         self.menu.append(ui.Button('Clean All Events',self.clean_custom_events))
-        self.menu.append(ui.Info_Text('You can auto-trim based on avaiable events. Choose the Trim Mode that fit your needs.'))
+        self.menu.append(ui.Info_Text('You can auto-trim to get all sections based on available events. Choose the Trim Mode that fit your needs.'))
         self.menu.append(ui.Selector('mode',self,label='Trim Mode',selection=['chain','in out pairs'] )) 
         self.menu.append(ui.Button('Auto-trim',self.auto_trim))
+
+        self.menu.append(ui.Info_Text('You can auto-trim to get a one section based on the first and last events.'))
+        self.menu.append(ui.Button('Auto-trim',self.auto_trim_first_last))
 
         # todo: for each data column, load filters dinamically based on filtered lines (after removing repetition) 
         # first guess is to use switchs
