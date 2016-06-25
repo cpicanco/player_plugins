@@ -186,8 +186,13 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         def close():
             self.alive = False
 
+        def set_min_marker_perimeter(val):
+            self.min_marker_perimeter = val
+            self.notify_all_delayed({'subject':'min_marker_perimeter_changed'},delay=1)
+
         self.menu.elements[:] = []
         self.menu.append(ui.Button('Close',close))
+        self.menu.append(ui.Slider('min_marker_perimeter',self,min=20,max=500,step=1,setter=set_min_marker_perimeter))
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
         self.menu.append(ui.Selector('mode',self,setter=self.set_mode,label='Mode',selection=["Show Markers and Surfaces","Show marker IDs","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
         
@@ -612,7 +617,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
                     logger.warning("Could not make metrics_dir %s"%export_path)
                     return
 
-            metrics_dir = os.path.join(export_path,"metrics_%s-%s"%(in_mark,out_mark))
+            metrics_dir = os.path.join(export_path,"%s-%s"%(in_mark,out_mark))
             if os.path.isdir(metrics_dir):
                 logger.info("Will overwrite metrics_dir")
             else:
@@ -662,6 +667,22 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             
             self.g_pool.capture.seek_to_frame(in_mark)
             logger.info("Done exporting reference surface data.")
+
+    def export_raw_data(self):
+        """
+        .surface_gaze_positions - gaze_timestamp, surface_norm_x, surface_norm_y
+
+        """
+        sections_alive = False
+        if self.g_pool.trim_marks.class_name == 'Trim_Marks_Extended':
+            sections_alive = True
+
+        segmentation = None
+        for p in self.g_pool.plugins:
+            if p.class_name == 'Segmentation':
+                if p.alive:
+                    segmentation = p
+                    break
 
     def get_init_dict(self):
         return {'mode':self.mode}
