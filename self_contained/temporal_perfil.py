@@ -42,29 +42,17 @@ def load_data_from_path(path):
             stimuli_by_trial.append([])
         stimuli_by_trial[i - 1].append((timestamp, event))
 
-    # for trial in stimuli_by_trial:
-    #     for stimulus in trial:
-    #         print "timestamp", stimulus[0]
-    #         print "code", stimulus[1]
-
-    begin = stimuli_by_trial[0][0][0]
-    #end = stimuli_by_trial[-1][-1][0] 
-
-    # load timestamps1, responses
+    print timestamps2
     responses = []
-    cumulative = []
-    i = 1
     with open(timestamps1_path, 'r') as f:
         for line in f:
             (trial_no, timestamp, event) = literal_eval(line)
             if "R" in event:
                 responses.append(float(timestamp))
-                cumulative.append(i)
-                i += 1
 
     ymax = len(responses)
     print ymax, 'responses'
-    return stimuli_by_trial, responses, cumulative, begin #, end
+    return stimuli_by_trial, responses, # cumulative, # begin #, end
 
 def standard_plot(axis):
     # vertical lines
@@ -129,7 +117,7 @@ if __name__ == '__main__':
     # rpath = '/home/rafael/documents/doutorado/data_doc/011-Priscila/2015-05-26/'
     # rpath = '/home/rafael/documents/doutorado/data_doc/013-Oziele/2015-05-26/'
 
-    rpath = '/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/'
+    rpath = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/'
     paths = [
         os.path.join(rpath, "000"),
         os.path.join(rpath, "001"),
@@ -140,14 +128,14 @@ if __name__ == '__main__':
     data = []
     ymax = []
     for path in paths:
-        stimuli_by_trial, responses, cumulative, begin = load_data_from_path(path)
-        data.append((stimuli_by_trial, responses, cumulative, begin))
+        stimuli_by_trial, responses = load_data_from_path(path)
+        data.append((stimuli_by_trial, responses))
         ymax.append(len(responses))
 
     ymax = np.amax(ymax)
-    x_label = 'Time (s)'
-    y_label = 'Cumulative Responses'
-    title = 'Cumulative Response by Time'
+    x_label = 'Time block'
+    y_label = 'Response rate'
+    title = 'Response rate by time block'
 
     n_plots = len(paths)
     if n_plots == 1:
@@ -164,7 +152,7 @@ if __name__ == '__main__':
     #figure.text(0.014, 0.5, y_label, rotation='vertical',verticalalignment='center',horizontalalignment='right')
 
     for i, d in enumerate(data):
-        (stimuli_by_trial, responses, cumulative, begin) = d
+        (stimuli_by_trial, responses) = d
         standard_plot(axarr[i])
         #plt.xlim(xmax = 300)
 
