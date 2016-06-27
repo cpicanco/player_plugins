@@ -353,10 +353,15 @@ class Segmentation(Plugin):
         # create sections and pass them to the trim_marks
         sections = []
         events = sorted(self.custom_events, key=int)
-        sections.append([events[0],events[-1]])
+        if len(events) > 0:
 
-        self.trim_marks.sections = sections
-        self.trim_marks.focus = 0
+            sections.append([events[0],events[-1]])
+
+            self.trim_marks.sections = sections
+            self.trim_marks.focus = 0
+        else:
+            logger.info("No custom events found, add some.")
+
 
     def init_gui(self):
         print zmq.zmq_version()
