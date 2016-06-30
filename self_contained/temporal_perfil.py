@@ -13,95 +13,50 @@
 import sys, os
 import numpy as np
 import matplotlib.pyplot as plt
-from ast import literal_eval
+from methods import all_responses,stimuli_onset
 
 def load_data_from_path(path):
-    timestamps1_path = os.path.join(path, "scapp_output.timestamps")
-    timestamps2_path = os.path.join(path, "scapp_output.npy")
+    beha_events_path = os.path.join(path, "behavioral_events.txt")
+    if not os.path.isfile(beha_events_path):
+        print beha_events_path
+        raise IOError, "behavioral_events were not found."
 
-    if not os.path.isfile(timestamps1_path):
-        raise IOError, "Source 1 were not found."
+    return np.genfromtxt(beha_events_path, delimiter="\t",missing_values=["NA"],
+      filling_values=None,names=True, autostrip=True, dtype=None)
 
-    if not os.path.isfile(timestamps2_path):
-        raise IOError, "Source 2 were not found."
+def plot_temporal_perfil(axis,onsets,timestamps):
+  def is_inside(rangein, rangeout):
+    inside = []
+    for t in timestamps:
+      if (t >= rangein) and (t <= rangeout):
+        inside.append(t)
 
-    print "responses:",timestamps1_path
-    print "stimuli__:",timestamps2_path
+    return inside
 
-    # load timestamps2, stimuli onset
-    stimuli_by_trial = [[]]
-    timestamps2 = np.load(timestamps2_path)
-    for line in timestamps2:
-        trial_no = line[0] 
-        timestamp = line[1]
-        event = line[2]
+  def get_rate_line(onsets,aLabel,plot=True):
+    g_rate = []
+    for begin, end in zip(onsets[0], onsets[1]):
+      g_rate.append(len(is_inside(begin, end))/(end-begin))
 
-        i = int(trial_no)
+    if plot:
+      axis.plot(g_rate,color=aLabel.lower(),label=aLabel)
 
-        if i > len(stimuli_by_trial):
-            stimuli_by_trial.append([])
-        stimuli_by_trial[i - 1].append((timestamp, event))
+  # red line
+  get_rate_line(onsets, 'Red')
 
-    print timestamps2
-    responses = []
-    with open(timestamps1_path, 'r') as f:
-        for line in f:
-            (trial_no, timestamp, event) = literal_eval(line)
-            if "R" in event:
-                responses.append(float(timestamp))
+  # deleting and reversing give us the blue one 
+  del onsets[0][0]
+  get_rate_line(list(reversed(onsets)), 'Blue')
+  
+  # remove frame
+  axis.spines['top'].set_visible(False)
+  axis.spines['bottom'].set_visible(False)
+  axis.spines['left'].set_visible(False)
+  axis.spines['right'].set_visible(False)
 
-    ymax = len(responses)
-    print ymax, 'responses'
-    return stimuli_by_trial, responses, # cumulative, # begin #, end
-
-def standard_plot(axis):
-    # vertical lines
-    red_onset = []
-    blu_onset = []
-    for trial in stimuli_by_trial:
-        value = float(trial[0][0])
-        if trial[0][1] == '1':
-            red_onset.append(value)
-
-        if trial[0][1] == '2':
-            blu_onset.append(value)
-
-    r_rate = []
-    for red, blue in zip(red_onset,blu_onset):
-        r_inside = []
-        for r in responses:
-            if (r >= red) and (r <= blue):
-                r_inside.append(r)
-
-        r_rate.append(len(r_inside)/(blue-red))
-
-
-    # the actual data
-    axis.plot(r_rate,color='red',label='Red')
-
-    del red_onset[0]
-
-    r_rate = []
-    for red, blue in zip(red_onset,blu_onset):
-        r_inside = []
-        for r in responses:
-            if (r >= blue) and (r <= red):
-                r_inside.append(r)
-
-        r_rate.append(len(r_inside)/(red-blue))
-
-    axis.plot(r_rate,color='blue',label='Blue')
-
-    # remove frame
-    axis.spines['top'].set_visible(False)
-    axis.spines['bottom'].set_visible(False)
-    axis.spines['left'].set_visible(False)
-    axis.spines['right'].set_visible(False)
-
-    #remove ticks
-    axis.xaxis.set_ticks_position('none')
-    axis.yaxis.set_ticks_position('none') 
-
+  #remove ticks
+  axis.xaxis.set_ticks_position('none')
+  axis.yaxis.set_ticks_position('none')
 
 if __name__ == '__main__':
 
@@ -109,27 +64,29 @@ if __name__ == '__main__':
 # drawing #
 ###########
 
-    # rpath = '/home/rafael/documents/doutorado/data_doc/006-Renan/2015-05-20/'
-    # rpath = '/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-19/'
-    # rpath = '/home/rafael/documents/doutorado/data_doc/005-Marco/2015-05-20/' # beautiful
-    # rpath = '/home/rafael/documents/doutorado/data_doc/007-Gabriel/2015-05-20/' # beautiful
-    # rpath = '/home/rafael/documents/doutorado/data_doc/010-Iguaracy/2015-05-25/' # beautiful
-    # rpath = '/home/rafael/documents/doutorado/data_doc/011-Priscila/2015-05-26/'
-    # rpath = '/home/rafael/documents/doutorado/data_doc/013-Oziele/2015-05-26/'
+    # rpath = '/home/pupil/_rafael/data_doc/006-Renan/2015-05-20/'
+    # rpath = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
+    # rpath = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/' # beautiful
+    # rpath = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/' # beautiful
+    # rpath = '/home/pupil/_rafael/data_doc/010-Iguaracy/2015-05-25/' # beautiful
+    rpath = '/home/pupil/_rafael/data_doc/011-Priscila/2015-05-26/raw_data_organized/'
+    # rpath = '/home/pupil/_rafael/data_doc/013-Oziele/2015-05-26/'
 
-    rpath = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/'
+    # rpath = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26'
     paths = [
         os.path.join(rpath, "000"),
         os.path.join(rpath, "001"),
         os.path.join(rpath, "002")
+        #os.path.join(rpath, "003")
     ]
 
     # global vars
     data = []
     ymax = []
     for path in paths:
-        stimuli_by_trial, responses = load_data_from_path(path)
-        data.append((stimuli_by_trial, responses))
+        be = load_data_from_path(path)
+        responses = all_responses(be)
+        data.append((stimuli_onset(be), responses))
         ymax.append(len(responses))
 
     ymax = np.amax(ymax)
@@ -152,8 +109,8 @@ if __name__ == '__main__':
     #figure.text(0.014, 0.5, y_label, rotation='vertical',verticalalignment='center',horizontalalignment='right')
 
     for i, d in enumerate(data):
-        (stimuli_by_trial, responses) = d
-        standard_plot(axarr[i])
+        (onsets, responses) = d
+        plot_temporal_perfil(axarr[i], onsets, responses)
         #plt.xlim(xmax = 300)
 
     axarr[0].set_ylabel(y_label)

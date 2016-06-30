@@ -10,6 +10,8 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+from methods import stimuli_onset
+from temporal_perfil import plot_temporal_perfil
 
 def load_npdata_from_path(path):
 	beha_events_path = os.path.join(path, "behavioral_events.txt")
@@ -29,60 +31,13 @@ def load_npdata_from_path(path):
 
 	return be, ge
 
-def standard_plot(axis,be,ge):
-	red_onset = []
-	blu_onset = []
-	for event in be:
-		time = event['time']
-		if event['event'] == '1a':
-			red_onset.append(time)
-
-		if event['event'] == '2a':
-			blu_onset.append(time)
-
-	g_rate = []
-	for red, blue in zip(sorted(red_onset),sorted(blu_onset)):
-		g_inside = []
-		for g in ge['time']:
-			if (g >= red) and (g <= blue):
-				g_inside.append(g)
-
-		g_rate.append(len(g_inside)/(blue-red))
-
-
-	# the actual data
-	axis.plot(g_rate,color='red',label='Red')
-
-	del red_onset[0]
-
-	g_rate = []
-	for red, blue in zip(sorted(red_onset),sorted(blu_onset)):
-		g_inside = []
-		for g in ge['time']:
-			if (g >= blue) and (g <= red):
-				g_inside.append(g)
-
-		g_rate.append(len(g_inside)/(red-blue))
-
-	axis.plot(g_rate,color='blue',label='Blue')
-
-	# remove frame
-	axis.spines['top'].set_visible(False)
-	axis.spines['bottom'].set_visible(False)
-	axis.spines['left'].set_visible(False)
-	axis.spines['right'].set_visible(False)
-
-	#remove ticks
-	axis.xaxis.set_ticks_position('none')
-	axis.yaxis.set_ticks_position('none') 
-
 if __name__ == '__main__':
-
-	rpath = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/raw_data_organized/'
+	rpath = '/home/pupil/_rafael/data_doc/011-Priscila/2015-05-26/raw_data_organized/'
 	paths = [
 		os.path.join(rpath, "000"),
 		os.path.join(rpath, "001"),
 		os.path.join(rpath, "002")
+		#os.path.join(rpath, "003")
 	]
 
 	x_label = 'Time block'
@@ -104,7 +59,7 @@ if __name__ == '__main__':
 
 	for i, path in enumerate(paths):
 		be, ge = load_npdata_from_path(path)
-		standard_plot(axarr[i], be, ge)
+		plot_temporal_perfil(axarr[i], stimuli_onset(be), ge['time'])
 
 	axarr[0].set_ylabel(y_label)
 	#axarr.legend(loc=(0.0,0.73))
