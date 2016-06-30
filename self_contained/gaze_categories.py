@@ -9,17 +9,19 @@
 '''
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn import metrics
-from sklearn.preprocessing import StandardScaler
+#from sklearn.preprocessing import StandardScaler
 
-import matplotlib.pyplot as plt
+from methods import stimuli_onset
+from temporal_perfil import plot_temporal_perfil
 
 def categorize_points(src_xy, return_dict=False):
 	# so far no need for scaling, our data is assumed to be gaussian and normalized
 	# src_xy = StandardScaler().fit_transform(src_xy)
-	dbsc = DBSCAN(eps = 0.035, min_samples = 500).fit(src_xy)
+	dbsc = DBSCAN(eps = 0.06, min_samples = 500).fit(src_xy)
 
 	# return a dictionary with clusters and noises
 	if return_dict:
@@ -106,72 +108,35 @@ def plot_dbscan(src_xy, dbsc):
 		plt.plot(xy[:,0], xy[:,1], 'o', markerfacecolor=col,
 				 markeredgecolor='k', markersize=1)
 
-	# axes = plt.gca()
-	# axes.set_ylim(ymax = 1, ymin = 0)
-	# axes.set_xlim(xmax = 1, xmin = 0)
-	plt.axis('equal')
+	axes = plt.gca()
+	axes.set_ylim(ymax = 1, ymin = 0)
+	axes.set_xlim(xmax = 1, xmin = 0)
+	# plt.axis('equal')
 	plt.title('')
 	plt.show()
 
-
-
-def plot_temporal_perfil(axis,onsets,gtime):
-	red_onset = onsets[0]
-	blu_onset = onsets[1]
-	g_rate = []
-	for red, blue in zip(red_onset,blu_onset):
-		g_inside = []
-		for g in ge['time']:
-			if (g >= red) and (g <= blue):
-				g_inside.append(g)
-
-		g_rate.append(len(g_inside)/(blue-red))
-
-
-	# the actual data
-	axis.plot(g_rate,color='red',label='Red')
-
-	del red_onset[0]
-
-	g_rate = []
-	for red, blue in zip(red_onset,blu_onset):
-		g_inside = []
-		for g in ge['time']:
-			if (g >= blue) and (g <= red):
-				g_inside.append(g)
-
-		g_rate.append(len(g_inside)/(red-blue))
-
-	axis.plot(g_rate,color='blue',label='Blue')
-
-	# remove frame
-	axis.spines['top'].set_visible(False)
-	axis.spines['bottom'].set_visible(False)
-	axis.spines['left'].set_visible(False)
-	axis.spines['right'].set_visible(False)
-
-	#remove ticks
-	axis.xaxis.set_ticks_position('none')
-	axis.yaxis.set_ticks_position('none') 
-
 if __name__ == '__main__':
-	root = '/home/pupil/_rafael/data_doc/013-Oziele/2015-05-26/raw_data_organized'
+	root = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/'
+	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/'
+	# root = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/' # eps = 0.04, min_samples = 1000
+	
+	root = os.path.join(root, 'raw_data_organized')
 	data_folder = os.path.join(root, '002')
 	beha_events_path = os.path.join(data_folder, "behavioral_events.txt")
 	gaze_events_path = os.path.join(data_folder, 'gaze_coordenates_on_screen.txt')
 	
 	gaze_data = np.genfromtxt(gaze_events_path, delimiter='\t',missing_values=['NA'],
-	  filling_values=None,names=True, autostrip=True, dtype=None)
+		filling_values=None,names=True, autostrip=True, dtype=None)
 
 	beha_data = np.genfromtxt(beha_events_path, delimiter="\t",missing_values=["NA"],
-	  filling_values=None,names=True, autostrip=True, dtype=None)
+		filling_values=None,names=True, autostrip=True, dtype=None)
 
 	# DBSCAN expects data with shape (-1,2), we need to transpose ours first
 	src_xy = np.array([gaze_data['x_norm'], gaze_data['y_norm']])
 	src_xy = src_xy.T
 
 	dbsc = categorize_points(src_xy)
-	#plot_dbscan(src_xy, dbsc)
+	plot_dbscan(src_xy, dbsc)
 
 	# clusters = categorize_points(src_xy, True)
 	# for key, value in clusters.iteritems():
@@ -186,9 +151,41 @@ if __name__ == '__main__':
 	# 		plt.title(key)
 	# 		plt.show()
 
+
+	x_label = 'Time block'
+	y_label = 'Response rate'
+	title = 'fixation rate by time block'
+
+	n_plots = len([1,2])
+	if n_plots == 1:
+		figsize = (6, 4)
+	elif n_plots == 2:
+		figsize = (11, 4)
+	else:
+		figsize = (16, 4)
+
+	# figure.add_axes([0.1, 0.1, 0.8, 0.8], frameon = 0)
+	figure, axarr = plt.subplots(1, n_plots, sharey=True, sharex=False, figsize=figsize) 
+	figure.suptitle(title);
+	figure.text(0.5, 0.02, x_label)
+
+
 	src_timestamps = gaze_data['time']
 	time_categorized = categorize_timestamps(src_timestamps,dbsc)
 
+	# look rate at left when red/blue is present
+	# look rate at right when red/blu is present
+	# note: fps should be as constant as possible
 	for key, value in time_categorized.iteritems():
 		print key, ':', len(value)
-		# if len(value) > 0:
+		if len(value) > 0 and 'cluster' in key:
+			i = int(key[-1])
+			plot_temporal_perfil(axarr[i], stimuli_onset(beha_data), value)
+			axarr[i].set_title(key)
+
+	plt.ylim(ymin = 0)
+
+	figure.subplots_adjust(wspace=0.1,left=0.05, right=.98,bottom=0.1,top=0.92)
+			# figure.tight_layout()
+				
+	plt.show()
