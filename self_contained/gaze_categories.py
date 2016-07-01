@@ -15,13 +15,13 @@ from sklearn.cluster import DBSCAN
 from sklearn import metrics
 #from sklearn.preprocessing import StandardScaler
 
-from methods import stimuli_onset
+from methods import stimuli_onset, all_stimuli
 from temporal_perfil import plot_temporal_perfil
 
 def categorize_points(src_xy, return_dict=False):
 	# so far no need for scaling, our data is assumed to be gaussian and normalized
 	# src_xy = StandardScaler().fit_transform(src_xy)
-	dbsc = DBSCAN(eps = 0.06, min_samples = 500).fit(src_xy)
+	dbsc = DBSCAN(eps = 0.06, min_samples = 1000).fit(src_xy)
 
 	# return a dictionary with clusters and noises
 	if return_dict:
@@ -101,7 +101,7 @@ def plot_dbscan(src_xy, dbsc):
 		# clusters
 		xy = src_xy[class_member_mask & core_samples_mask]
 		plt.plot(xy[:,0], xy[:,1], 'o', markerfacecolor=col,
-				 markeredgecolor='k', markersize=3)
+				 markeredgecolor='k', markersize=3, label=str(k))
 
 		# noise
 		xy = src_xy[class_member_mask & ~core_samples_mask]
@@ -111,12 +111,14 @@ def plot_dbscan(src_xy, dbsc):
 	axes = plt.gca()
 	axes.set_ylim(ymax = 1, ymin = 0)
 	axes.set_xlim(xmax = 1, xmin = 0)
+	axes.legend()
 	# plt.axis('equal')
 	plt.title('')
 	plt.show()
 
 if __name__ == '__main__':
-	root = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/'
+	root = '/home/pupil/_rafael/data_doc/006-Renan/2015-05-20'
+	# root = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/'
 	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/'
 	# root = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/' # eps = 0.04, min_samples = 1000
 	
@@ -156,7 +158,7 @@ if __name__ == '__main__':
 	y_label = 'Response rate'
 	title = 'fixation rate by time block'
 
-	n_plots = len([1,2])
+	n_plots = len([0])
 	if n_plots == 1:
 		figsize = (6, 4)
 	elif n_plots == 2:
@@ -176,13 +178,23 @@ if __name__ == '__main__':
 	# look rate at left when red/blue is present
 	# look rate at right when red/blu is present
 	# note: fps should be as constant as possible
+
+	# for key, value in time_categorized.iteritems():
+	# 	print key, ':', len(value)
+	# 	if len(value) > 0 and 'cluster' in key:
+	# 		i = int(key[-1])
+	# 		plot_temporal_perfil(axarr[i], stimuli_onset(beha_data), value)
+	# 		axarr[i].set_title(key)
+
+	# look rate at left 
+	# look rate at right
+	timestamps = []
 	for key, value in time_categorized.iteritems():
 		print key, ':', len(value)
 		if len(value) > 0 and 'cluster' in key:
-			i = int(key[-1])
-			plot_temporal_perfil(axarr[i], stimuli_onset(beha_data), value)
-			axarr[i].set_title(key)
+			timestamps.append(value)
 
+	plot_temporal_perfil(axarr,all_stimuli(beha_data), timestamps,"positions")
 	plt.ylim(ymin = 0)
 
 	figure.subplots_adjust(wspace=0.1,left=0.05, right=.98,bottom=0.1,top=0.92)
