@@ -18,10 +18,10 @@ from sklearn import metrics
 from methods import stimuli_onset, all_stimuli
 from temporal_perfil import plot_temporal_perfil
 
-def categorize_points(src_xy, return_dict=False):
+def categorize_points(src_xy, eps = 0.06, min_samples = 1000, return_dict=False):
 	# so far no need for scaling, our data is assumed to be gaussian and normalized
 	# src_xy = StandardScaler().fit_transform(src_xy)
-	dbsc = DBSCAN(eps = 0.06, min_samples = 1000).fit(src_xy)
+	dbsc = DBSCAN(eps=eps, min_samples=min_samples).fit(src_xy)
 
 	# return a dictionary with clusters and noises
 	if return_dict:
@@ -116,49 +116,86 @@ def plot_dbscan(src_xy, dbsc):
 	plt.title('')
 	plt.show()
 
-if __name__ == '__main__':
-	root = '/home/pupil/_rafael/data_doc/006-Renan/2015-05-20'
+if __name__ == '__main__': 
+	# paths = ['000',
+	# 		 '001',
+	# 		 '002',
+	# 		 '003']
+
 	# root = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/'
+	# data = [{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000}]
+
+	# root = '/home/pupil/_rafael/data_doc/013-Oziele/2015-05-26/'
+	# data = [{'eps':0.06, 'min_samples':1700},
+	# 		{'eps':0.06, 'min_samples':1200},
+	# 		{'eps':0.06, 'min_samples':1200},
+	# 		{'eps':0.06, 'min_samples':1200}]
+
+	paths = ['000',
+			 '001',
+			 '002']
+			 
+	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
+	# data = [{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000}]
+
 	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/'
-	# root = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/' # eps = 0.04, min_samples = 1000
-	
+	# data = [{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':500}]
+
+	# root = '/home/pupil/_rafael/data_doc/006-Renan/2015-05-20'
+	# data = [{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':800}]
+
+
+	# root = '/home/pupil/_rafael/data_doc/011-Priscila/2015-05-26/'
+	# data = [{'eps':0.06, 'min_samples':1200},
+	# 		{'eps':0.06, 'min_samples':1200},
+	# 		{'eps':0.06, 'min_samples':1200}]
+
+	# root = '/home/pupil/_rafael/data_doc/010-Iguaracy/2015-05-25/'
+	# data = [{'eps':0.06, 'min_samples':1200},
+	# 		{'eps':0.06, 'min_samples':1200},
+	# 		{'eps':0.06, 'min_samples':1200}]
+
+	root = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/'
+	data = [{'eps':0.06, 'min_samples':1500},
+			{'eps':0.06, 'min_samples':1500},
+			{'eps':0.06, 'min_samples':1500}]
+
 	root = os.path.join(root, 'raw_data_organized')
-	data_folder = os.path.join(root, '002')
-	beha_events_path = os.path.join(data_folder, "behavioral_events.txt")
-	gaze_events_path = os.path.join(data_folder, 'gaze_coordenates_on_screen.txt')
-	
-	gaze_data = np.genfromtxt(gaze_events_path, delimiter='\t',missing_values=['NA'],
-		filling_values=None,names=True, autostrip=True, dtype=None)
+	for i, path in enumerate(paths):	
+		data_folder = os.path.join(root, path)
+		beha_events_path = os.path.join(data_folder, "behavioral_events.txt")
+		gaze_events_path = os.path.join(data_folder, 'gaze_coordenates_on_screen.txt')
+		
+		gaze_data = np.genfromtxt(gaze_events_path, delimiter='\t',missing_values=['NA'],
+			filling_values=None,names=True, autostrip=True, dtype=None)
 
-	beha_data = np.genfromtxt(beha_events_path, delimiter="\t",missing_values=["NA"],
-		filling_values=None,names=True, autostrip=True, dtype=None)
+		data[i]['beha_data'] = np.genfromtxt(beha_events_path, delimiter="\t",missing_values=["NA"],
+			filling_values=None,names=True, autostrip=True, dtype=None)
 
-	# DBSCAN expects data with shape (-1,2), we need to transpose ours first
-	src_xy = np.array([gaze_data['x_norm'], gaze_data['y_norm']])
-	src_xy = src_xy.T
+		# DBSCAN expects data with shape (-1,2), we need to transpose ours first
+		data[i]['src_xy'] = np.array([gaze_data['x_norm'], gaze_data['y_norm']]).T
 
-	dbsc = categorize_points(src_xy)
-	plot_dbscan(src_xy, dbsc)
+		data[i]['dbsc'] = categorize_points(data[i]['src_xy'], data[i]['eps'], data[i]['min_samples'])
+		plot_dbscan(data[i]['src_xy'], data[i]['dbsc'])
 
-	# clusters = categorize_points(src_xy, True)
-	# for key, value in clusters.iteritems():
-	# 	print key, ':', len(value)
-	# 	if len(value) > 0:
-
-	# 		# for normalized 2d data with p(x, y) where 1 => x, y >= 0
-	# 		axes = plt.gca()
-	# 		axes.set_ylim(ymax = 1, ymin = 0)
-	# 		axes.set_xlim(xmax = 1, xmin = 0)
-	# 		plt.plot(value[:,0], value[:,1], 'o')
-	# 		plt.title(key)
-	# 		plt.show()
+		data[i]['src_timestamps'] = gaze_data['time']
+		data[i]['time_categorized'] = categorize_timestamps(data[i]['src_timestamps'],data[i]['dbsc'])
 
 
 	x_label = 'Time block'
-	y_label = 'Response rate'
-	title = 'fixation rate by time block'
+	y_label = 'gaze rate (r/sec)'
+	title = 'gaze rate on left/right by time block'
 
-	n_plots = len([0])
+	n_plots = len(data)
 	if n_plots == 1:
 		figsize = (6, 4)
 	elif n_plots == 2:
@@ -171,33 +208,44 @@ if __name__ == '__main__':
 	figure.suptitle(title);
 	figure.text(0.5, 0.02, x_label)
 
-
-	src_timestamps = gaze_data['time']
-	time_categorized = categorize_timestamps(src_timestamps,dbsc)
-
-	# look rate at left when red/blue is present
-	# look rate at right when red/blu is present
-	# note: fps should be as constant as possible
-
-	# for key, value in time_categorized.iteritems():
-	# 	print key, ':', len(value)
-	# 	if len(value) > 0 and 'cluster' in key:
-	# 		i = int(key[-1])
-	# 		plot_temporal_perfil(axarr[i], stimuli_onset(beha_data), value)
-	# 		axarr[i].set_title(key)
-
 	# look rate at left 
 	# look rate at right
-	timestamps = []
-	for key, value in time_categorized.iteritems():
-		print key, ':', len(value)
-		if len(value) > 0 and 'cluster' in key:
-			timestamps.append(value)
+	for i, d in enumerate(data):
+		timestamps = []
+		for key, value in d['time_categorized'].iteritems():
+			print key, ':', len(value)
+			if len(value) > 0 and 'cluster' in key:
+				timestamps.append(value)
 
-	plot_temporal_perfil(axarr,all_stimuli(beha_data), timestamps,"positions")
+		plot_temporal_perfil(axarr[i],all_stimuli(data[i]['beha_data']), timestamps,"positions")
+
 	plt.ylim(ymin = 0)
 
 	figure.subplots_adjust(wspace=0.1,left=0.05, right=.98,bottom=0.1,top=0.92)
 			# figure.tight_layout()
 				
 	plt.show()
+
+# clusters = categorize_points(src_xy, True)
+# for key, value in clusters.iteritems():
+# 	print key, ':', len(value)
+# 	if len(value) > 0:
+
+# 		# for normalized 2d data with p(x, y) where 1 => x, y >= 0
+# 		axes = plt.gca()
+# 		axes.set_ylim(ymax = 1, ymin = 0)
+# 		axes.set_xlim(xmax = 1, xmin = 0)
+# 		plt.plot(value[:,0], value[:,1], 'o')
+# 		plt.title(key)
+# 		plt.show()
+
+# look rate at left when red/blue is present
+# look rate at right when red/blu is present
+# note: fps should be as constant as possible
+
+# for key, value in time_categorized.iteritems():
+# 	print key, ':', len(value)
+# 	if len(value) > 0 and 'cluster' in key:
+# 		i = int(key[-1])
+# 		plot_temporal_perfil(axarr[i], stimuli_onset(beha_data), value)
+# 		axarr[i].set_title(key)
