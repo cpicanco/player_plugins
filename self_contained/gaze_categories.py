@@ -8,6 +8,7 @@
   along with this program. If not, see <http://www.gnu.org/licenses/>.
 '''
 import os
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -76,8 +77,30 @@ def categorize_timestamps(src_timestamps, dbsc):
 		# noise
 		timestamps = src_timestamps[class_member_mask & ~core_samples_mask]
 		clusters['noise_'+str(k)] = timestamps
-
 	return clusters
+
+def categorize_masks(src_timestamps, dbsc):
+	masks = {}
+	labels = dbsc.labels_
+	core_samples_mask = np.zeros_like(labels, dtype = bool)
+	core_samples_mask[dbsc.core_sample_indices_] = True
+
+	# Black removed and is used for noise instead.
+	unique_labels = set(labels)
+	colors = plt.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
+	for k, col in zip(unique_labels, colors):
+		if k == -1:
+			# Black used for noise.
+			col = 'k'
+
+		class_member_mask = (labels == k)
+
+		# cluster
+		masks['cluster_'+str(k)] = class_member_mask & core_samples_mask
+
+		# noise
+		masks['noise_'+str(k)] = class_member_mask & ~core_samples_mask
+	return masks
 
 def plot_dbscan(src_xy, dbsc):
 	labels = dbsc.labels_
@@ -138,10 +161,10 @@ if __name__ == '__main__':
 			 '001',
 			 '002']
 			 
-	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
-	# data = [{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000}]
+	root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
+	data = [{'eps':0.06, 'min_samples':1000},
+			{'eps':0.06, 'min_samples':1000},
+			{'eps':0.06, 'min_samples':1000}]
 
 	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/'
 	# data = [{'eps':0.06, 'min_samples':1000},
@@ -164,10 +187,10 @@ if __name__ == '__main__':
 	# 		{'eps':0.06, 'min_samples':1200},
 	# 		{'eps':0.06, 'min_samples':1200}]
 
-	root = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/'
-	data = [{'eps':0.06, 'min_samples':1500},
-			{'eps':0.06, 'min_samples':1500},
-			{'eps':0.06, 'min_samples':1500}]
+	# root = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/'
+	# data = [{'eps':0.06, 'min_samples':1500},
+	# 		{'eps':0.06, 'min_samples':1500},
+	# 		{'eps':0.06, 'min_samples':1500}]
 
 	root = os.path.join(root, 'raw_data_organized')
 	for i, path in enumerate(paths):	
@@ -186,6 +209,8 @@ if __name__ == '__main__':
 
 		data[i]['dbsc'] = categorize_points(data[i]['src_xy'], data[i]['eps'], data[i]['min_samples'])
 		plot_dbscan(data[i]['src_xy'], data[i]['dbsc'])
+
+		data[i]['masks'] = categorize_masks(data[i]['src_xy'], data[i]['dbsc'])
 
 		data[i]['src_timestamps'] = gaze_data['time']
 		data[i]['time_categorized'] = categorize_timestamps(data[i]['src_timestamps'],data[i]['dbsc'])
@@ -210,13 +235,23 @@ if __name__ == '__main__':
 
 	# look rate at left 
 	# look rate at right
+	
 	for i, d in enumerate(data):
+		turnover_count = 0
+		turnover = [a for a,b in zip(d['masks']['cluster_0'],d['masks']['cluster_1']) if a or b]
+		for c, n in zip(turnover,turnover[1:]):
+			if c != n:
+				turnover_count += 1
+		print 'turnover_count:',turnover_count,'\n'
+
 		timestamps = []
 		for key, value in d['time_categorized'].iteritems():
+			# todo:
+			# need to compare the mean point of the clusters to ensure that
+			# 0 is always "left" and 1 is always "right"
 			print key, ':', len(value)
 			if len(value) > 0 and 'cluster' in key:
 				timestamps.append(value)
-
 		plot_temporal_perfil(axarr[i],all_stimuli(data[i]['beha_data']), timestamps,"positions")
 
 	plt.ylim(ymin = 0)
