@@ -35,24 +35,38 @@ def is_inside(timestamps,rangein, rangeout):
 def get_rate(time_pairwise,timestamps):
   return [len(is_inside(timestamps, begin, end))/(end-begin) for begin, end in time_pairwise]
 
-def plot_temporal_perfil(axis,onsets,timestamps, onsets_style='colors'):
+def plot_temporal_perfil(axis,onsets,timestamps, onsets_style='colors', c1="red", c2="blue", doreversed=False):
+  # def adjust():
+  #   if doreversed:
+  #     data = [-x for x in data]
+  w = 0.2
   if 'colors' in onsets_style:
     # red
+    
     data = get_rate(zip(onsets[0], onsets[1]),timestamps)
-    axis.plot(data, color="red", label="Red")
+    N = len(data)
+    if doreversed:
+      data = [-x for x in data]
+    # axis.plot(data, color=c1, label="During Red")
+    axis.bar(range(N),data,w, color=c1, label="During Red")
 
     # removing the first element and reversing give us the blue one
-    data = get_rate(zip(onsets[1], onsets[0][1:]), timestamps) 
-    axis.plot(data, color="blue", label="Blue")
+    data = get_rate(zip(onsets[1], onsets[0][1:]), timestamps)
+    N = len(data)
+    R = range(N)
+    if doreversed:
+      data = [-x for x in data]
+    # axis.plot(data, color=c2, label="During Blue")
+    axis.bar([x+w for x in R],data,w, color=c2, label="During Blue")
   
   elif 'positions' in onsets_style:
     # left
     data = get_rate(zip(onsets,onsets[1:]),timestamps[0])
-    axis.plot(data, color="black", label="Black")
+    axis.plot(data, color="black", label="Left")
 
     # right
     data = get_rate(zip(onsets,onsets[1:]),timestamps[1])
-    axis.plot(data, color="grey", label="Grey")
+    axis.plot(data, color="grey", label="Right")
 
   # remove frame
   axis.spines['top'].set_visible(False)
@@ -69,21 +83,22 @@ if __name__ == '__main__':
 ###########
 # drawing #
 ###########
-
+    # 
     # rpath = '/home/pupil/_rafael/data_doc/006-Renan/2015-05-20/'
     # rpath = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
+    # rpath = '/home/pupil/_rafael/data_doc/004-Cristiane/2015-05-27/raw_data_organized'
     # rpath = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/' # beautiful
-    # rpath = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/' # beautiful
+    # rpath = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/raw_data_organized' # beautiful
+    rpath = '/home/pupil/_rafael/data_doc/009-Rebeca/2015-05-25/raw_data_organized'
     # rpath = '/home/pupil/_rafael/data_doc/010-Iguaracy/2015-05-25/' # beautiful
     # rpath = '/home/pupil/_rafael/data_doc/011-Priscila/2015-05-26/raw_data_organized/'
     # rpath = '/home/pupil/_rafael/data_doc/013-Oziele/2015-05-26/'
-
-    rpath = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/raw_data_organized'
+    # rpath = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/raw_data_organized'
     paths = [
         os.path.join(rpath, "000"),
         os.path.join(rpath, "001"),
-        os.path.join(rpath, "002"),
-        os.path.join(rpath, "003")
+        os.path.join(rpath, "002")
+        # os.path.join(rpath, "003")
     ]
 
     # global vars
