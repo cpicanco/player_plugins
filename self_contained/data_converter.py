@@ -102,7 +102,7 @@ def convert(src, dst):
 			for line in t:
 				(trial_no, timestamp, event_s) = literal_eval(line)
 				left, top, right, bottom = 'NA', 'NA', 'NA', 'NA'
-				timestamp = round(float(timestamp)-time_start, 3) 
+				timestamp = '%.3f'%round(float(timestamp)-time_start, 3) 
 				event = line[1]
 
 				if 'S' in event_s:
@@ -117,7 +117,7 @@ def convert(src, dst):
 				else:
 					continue
 
-				f.write("\t".join((str(timestamp), event_type, event, left, right, bottom, top))+'\n')
+				f.write("\t".join((timestamp, event_type, event, left, right, bottom, top))+'\n')
 
 	# sort if necessary
 	# for l in sorted(reader, key=operator.itemgetter(0), reverse=False): # http://stackoverflow.com/a/2100384	
