@@ -10,6 +10,12 @@
 
 from methods import get_pixels_per_degree, get_visual_angle
 
+ROOM_LOW_AREA = 15.0 # square metters
+
+# 4 X GE ( F32T8/BF ), 4100K
+LIGHT_INITIAL_LUMENS = 2600 # estimated from F32T8/SP
+LIGHT_DESIGN_LUMENS = 2400 # estimated from F32T8/SP
+
 # object size, in cm
 SCREEN_WIDTH = 70.0
 
@@ -27,4 +33,5 @@ SCREEN_WIDTH_DEG, SCREEN_HEIGHT_DEG = get_visual_angle(SCREEN_WIDTH, SCREEN_DIST
 PIXELS_PER_DEGREE = get_pixels_per_degree(SCREEN_WIDTH_PX, SCREEN_HEIGHT_PX, SCREEN_WIDTH_DEG, SCREEN_HEIGHT_DEG)
 
 if __name__ == '__main__':
-  print SCREEN_WIDTH_DEG, SCREEN_HEIGHT_DEG
+  print 'width:', SCREEN_WIDTH_DEG, 'height', SCREEN_HEIGHT_DEG
+  print 'room_lux:',(LIGHT_DESIGN_LUMENS * 4.0)/ROOM_LOW_AREA
