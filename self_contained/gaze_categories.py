@@ -103,6 +103,7 @@ def categorize_masks(src_timestamps, dbsc):
 	return masks
 
 def plot_dbscan(src_xy, dbsc):
+	dictionary = {}
 	labels = dbsc.labels_
 	core_samples_mask = np.zeros_like(labels, dtype = bool)
 	core_samples_mask[dbsc.core_sample_indices_] = True
@@ -125,6 +126,7 @@ def plot_dbscan(src_xy, dbsc):
 		xy = src_xy[class_member_mask & core_samples_mask]
 		plt.plot(xy[:,0], xy[:,1], 'o', markerfacecolor=col,
 				 markeredgecolor='k', markersize=3, label=str(k))
+		dictionary['cluster_'+str(k)] = xy
 
 		# noise
 		xy = src_xy[class_member_mask & ~core_samples_mask]
@@ -138,33 +140,48 @@ def plot_dbscan(src_xy, dbsc):
 	# plt.axis('equal')
 	plt.title('')
 	plt.show()
+	return dictionary
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
+	
+	# Targets
+	BlueLeft = '#011efe'
+	RedLeft = '#fe0000'
+
+	# Distractors
+	RedRight = '#ffd3b6' #fe8181'
+	BlueRight = '#a8e6cf' #'#77aaff'
+
 	# paths = ['000',
 	# 		 '001',
 	# 		 '002',
 	# 		 '003']
 
 	# root = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/'
-	# data = [{'eps':0.06, 'min_samples':1000},
+	# data = [{'eps':0.06, 'min_samples':600},
+	# 		{'eps':0.06, 'min_samples':600},
+	# 		{'eps':0.06, 'min_samples':600},
+	# 		{'eps':0.06, 'min_samples':600}]
+
+	# root = '/home/pupil/_rafael/data_doc/013-Oziele/2015-05-26/'
+	# data = [{'eps':0.06, 'min_samples':1700},
 	# 		{'eps':0.06, 'min_samples':1000},
 	# 		{'eps':0.06, 'min_samples':1000},
 	# 		{'eps':0.06, 'min_samples':1000}]
 
-	# root = '/home/pupil/_rafael/data_doc/013-Oziele/2015-05-26/'
-	# data = [{'eps':0.06, 'min_samples':1700},
-	# 		{'eps':0.06, 'min_samples':1200},
-	# 		{'eps':0.06, 'min_samples':1200},
-	# 		{'eps':0.06, 'min_samples':1200}]
-
 	paths = ['000',
 			 '001',
 			 '002']
-			 
-	root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
+
+	root = '/home/pupil/_rafael/data_doc/004-Cristiane/2015-05-27/'
 	data = [{'eps':0.06, 'min_samples':1000},
 			{'eps':0.06, 'min_samples':1000},
 			{'eps':0.06, 'min_samples':1000}]
+
+	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
+	# data = [{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000}]
 
 	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/'
 	# data = [{'eps':0.06, 'min_samples':1000},
@@ -175,7 +192,6 @@ if __name__ == '__main__':
 	# data = [{'eps':0.06, 'min_samples':1000},
 	# 		{'eps':0.06, 'min_samples':1000},
 	# 		{'eps':0.06, 'min_samples':800}]
-
 
 	# root = '/home/pupil/_rafael/data_doc/011-Priscila/2015-05-26/'
 	# data = [{'eps':0.06, 'min_samples':1200},
@@ -208,7 +224,7 @@ if __name__ == '__main__':
 		data[i]['src_xy'] = np.array([gaze_data['x_norm'], gaze_data['y_norm']]).T
 
 		data[i]['dbsc'] = categorize_points(data[i]['src_xy'], data[i]['eps'], data[i]['min_samples'])
-		plot_dbscan(data[i]['src_xy'], data[i]['dbsc'])
+		data[i]['points_categorized'] = plot_dbscan(data[i]['src_xy'], data[i]['dbsc'])
 
 		data[i]['masks'] = categorize_masks(data[i]['src_xy'], data[i]['dbsc'])
 
@@ -244,17 +260,31 @@ if __name__ == '__main__':
 				turnover_count += 1
 		print 'turnover_count:',turnover_count,'\n'
 
-		timestamps = []
-		for key, value in d['time_categorized'].iteritems():
-			# todo:
-			# need to compare the mean point of the clusters to ensure that
-			# 0 is always "left" and 1 is always "right"
-			print key, ':', len(value)
-			if len(value) > 0 and 'cluster' in key:
-				timestamps.append(value)
-		plot_temporal_perfil(axarr[i],all_stimuli(data[i]['beha_data']), timestamps,"positions")
 
-	plt.ylim(ymin = 0)
+		left_right_xy = []
+		left_right_timestamps = []
+		for time, points in zip (d['time_categorized'].iteritems(),d['points_categorized'].iteritems()):
+			_, xy = points
+			time_key, timestamps = time
+			if len(timestamps) > 0 and 'cluster' in time_key:
+				left_right_timestamps.append(timestamps)
+				left_right_xy.append(xy)
+
+		if np.mean(left_right_xy[0][0]) > np.mean(left_right_xy[1][0]):
+			left_right_xy = [left_right_xy[1],left_right_xy[0]]
+			left_right_timestamps = [left_right_timestamps[1],left_right_timestamps[0]]
+
+		# all stimuli, left and right
+		plot_temporal_perfil(axarr[i],all_stimuli(data[i]['beha_data']), left_right_timestamps,"positions")
+
+		# all stimuli (red blue), left
+		# plot_temporal_perfil(axarr[i],stimuli_onset(data[i]['beha_data']), left_right_timestamps[0],'colors', c1=RedLeft, c2=BlueLeft)
+	
+		# all stimuli (red blue), right
+		# plot_temporal_perfil(axarr[i],stimuli_onset(data[i]['beha_data']), left_right_timestamps[1],"colors",c1=RedRight,c2=BlueRight, doreversed=True)
+	
+	# plt.ylim(ymin = -30)
+	plt.ylim(ymax = 30)
 
 	figure.subplots_adjust(wspace=0.1,left=0.05, right=.98,bottom=0.1,top=0.92)
 			# figure.tight_layout()
