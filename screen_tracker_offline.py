@@ -109,6 +109,16 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         self.cacher = Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter_cacher))
         self.cacher.start()
 
+    def update_marker_cache(self):
+        while not self.cache_queue.empty():
+            idx,c_m = self.cache_queue.get()
+            self.cache.update(idx,c_m)
+            for s in self.surfaces:
+                s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,idx=idx)
+            if self.cacher_run.value == False:
+                pass
+                # self.recalculate()
+
     def screen_segmentation(self):
         """
         no standards here, uv_coords ordering differing from the surface vertice one.
@@ -691,6 +701,21 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         if notification['subject'] == 'gaze_positions_changed':
             logger.info('Gaze positions changed. Please, recalculate.')
             #self.recalculate()
+        if notification['subject'] == 'gaze_positions_changed':
+            logger.info('Gaze postions changed. Please, recalculate..')
+            #self.recalculate()
+        elif notification['subject'] == 'surfaces_changed':
+            logger.info('Surfaces changed. Please, recalculate..')
+            #self.recalculate()
+        elif notification['subject'] == 'min_marker_perimeter_changed':
+            logger.info('min_marker.. not implemented')
+            #logger.info('Min marper perimeter adjusted. Re-detecting surfaces.')
+            #self.invalidate_surface_caches()
+        elif notification['subject'] is "should_export":
+            logger.info('should_export.. not implemented')
+            #logger.info('Min marper perimeter adjusted. Re-detecting surfaces.')
+            #self.save_surface_statsics_to_file(notification['range'],notification['export_dir'])
+
 
 del Screen_Tracker
 del Offline_Surface_Tracker
