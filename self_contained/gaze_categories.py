@@ -16,7 +16,7 @@ from sklearn.cluster import DBSCAN
 from sklearn import metrics
 #from sklearn.preprocessing import StandardScaler
 
-from methods import stimuli_onset, all_stimuli
+from methods import stimuli_onset, all_stimuli,color_pair
 from temporal_perfil import plot_temporal_perfil
 
 def categorize_points(src_xy, eps = 0.06, min_samples = 1000, return_dict=False):
@@ -102,7 +102,7 @@ def categorize_masks(src_timestamps, dbsc):
 		masks['noise_'+str(k)] = class_member_mask & ~core_samples_mask
 	return masks
 
-def plot_dbscan(src_xy, dbsc):
+def plot_dbscan(src_xy, dbsc, doplot=False):
 	dictionary = {}
 	labels = dbsc.labels_
 	core_samples_mask = np.zeros_like(labels, dtype = bool)
@@ -124,22 +124,24 @@ def plot_dbscan(src_xy, dbsc):
 
 		# clusters
 		xy = src_xy[class_member_mask & core_samples_mask]
-		plt.plot(xy[:,0], xy[:,1], 'o', markerfacecolor=col,
+		if doplot:
+			plt.plot(xy[:,0], xy[:,1], 'o', markerfacecolor=col,
 				 markeredgecolor='k', markersize=3, label=str(k))
 		dictionary['cluster_'+str(k)] = xy
 
 		# noise
 		xy = src_xy[class_member_mask & ~core_samples_mask]
-		plt.plot(xy[:,0], xy[:,1], 'o', markerfacecolor=col,
+		if doplot:
+			plt.plot(xy[:,0], xy[:,1], 'o', markerfacecolor=col,
 				 markeredgecolor='k', markersize=1)
-
-	axes = plt.gca()
-	axes.set_ylim(ymax = 1, ymin = 0)
-	axes.set_xlim(xmax = 1, xmin = 0)
-	axes.legend()
-	# plt.axis('equal')
-	plt.title('')
-	plt.show()
+	if doplot:
+		axes = plt.gca()
+		axes.set_ylim(ymax = 1, ymin = 0)
+		axes.set_xlim(xmax = 1, xmin = 0)
+		axes.legend()
+		# plt.axis('equal')
+		plt.title('')
+		plt.show()
 	return dictionary
 
 if __name__ == '__main__':
@@ -173,10 +175,16 @@ if __name__ == '__main__':
 			 '001',
 			 '002']
 
-	root = '/home/pupil/_rafael/data_doc/004-Cristiane/2015-05-27/'
-	data = [{'eps':0.06, 'min_samples':1000},
-			{'eps':0.06, 'min_samples':1000},
-			{'eps':0.06, 'min_samples':1000}]
+	root = '/home/pupil/_rafael/data_doc/009-Rebeca/2015-05-25/'
+	data = [{'eps':0.065, 'min_samples':1700},
+			{'eps':0.065, 'min_samples':1300},
+			{'eps':0.065, 'min_samples':1200}]
+
+
+	# root = '/home/pupil/_rafael/data_doc/004-Cristiane/2015-05-27/'
+	# data = [{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000},
+	# 		{'eps':0.06, 'min_samples':1000}]
 
 	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
 	# data = [{'eps':0.06, 'min_samples':1000},
@@ -275,7 +283,22 @@ if __name__ == '__main__':
 			left_right_timestamps = [left_right_timestamps[1],left_right_timestamps[0]]
 
 		# all stimuli, left and right
-		plot_temporal_perfil(axarr[i],all_stimuli(data[i]['beha_data']), left_right_timestamps,"positions")
+		#plot_temporal_perfil(axarr[i],all_stimuli(data[i]['beha_data']), left_right_timestamps,"positions")
+
+		# r1, r2, b1, b2, r1
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],0), left_right_timestamps[0],'pair', c1=RedLeft, nsize=0)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],0), left_right_timestamps[1],'pair', c1=RedRight, nsize=0, doreversed=True)
+
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],1), left_right_timestamps[0],'pair', c1=RedLeft, nsize=1)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],1), left_right_timestamps[1],'pair', c1=RedRight, nsize=1, doreversed=True)
+
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],2), left_right_timestamps[0],'pair', c1=BlueLeft, nsize=2)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],2), left_right_timestamps[1],'pair', c1=BlueRight, nsize=2, doreversed=True)
+						
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],3), left_right_timestamps[0],'pair', c1=BlueLeft, nsize=3)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],3), left_right_timestamps[1],'pair', c1=BlueRight, nsize=3, doreversed=True)
+		
+
 
 		# all stimuli (red blue), left
 		# plot_temporal_perfil(axarr[i],stimuli_onset(data[i]['beha_data']), left_right_timestamps[0],'colors', c1=RedLeft, c2=BlueLeft)

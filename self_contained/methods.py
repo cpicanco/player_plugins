@@ -72,6 +72,17 @@ def root_mean_square(gp):
 	return np.sqrt(np.mean(gp**2)), RMSX,RMSY
 
 # stimuli timestamps
+def color_pair(behavioral_data, pair):  
+	"""
+		behavioral_data: np.genfromtxt object; "behavioral_events.txt" as path
+	"""
+	def all_events(string):
+		return [line['time'] for line in behavioral_data if line['event'] == string]
+		
+	return [[all_events('1a'), all_events('1b')],
+	        [all_events('1b'), all_events('2a')],
+	        [all_events('2a'), all_events('2b')],
+	        [all_events('2b'), all_events('1a')[1:]]][pair]
 
 def stimuli_onset(behavioral_data):  
 	"""

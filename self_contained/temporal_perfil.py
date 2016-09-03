@@ -25,21 +25,21 @@ def load_data_from_path(path):
       filling_values=None,names=True, autostrip=True, dtype=None)
 
 def is_inside(timestamps,rangein, rangeout):
-  inside = []
-  for t in timestamps:
-    if (t >= rangein) and (t <= rangeout):
-      inside.append(t)
+  # inside = []
+  # for t in timestamps:
+  #   if (t >= rangein) and (t <= rangeout):
+  #     inside.append(t)
 
-  return inside
+  return [t for t in timestamps if (t >= rangein) and (t <= rangeout)]
 
 def get_rate(time_pairwise,timestamps):
   return [len(is_inside(timestamps, begin, end))/(end-begin) for begin, end in time_pairwise]
 
-def plot_temporal_perfil(axis,onsets,timestamps, onsets_style='colors', c1="red", c2="blue", doreversed=False):
+def plot_temporal_perfil(axis,onsets,timestamps, onsets_style='colors', c1="red", c2="blue", doreversed=False, nsize=None):
   # def adjust():
   #   if doreversed:
   #     data = [-x for x in data]
-  w = 0.2
+  w = 0.15
   if 'colors' in onsets_style:
     # red
     
@@ -58,7 +58,19 @@ def plot_temporal_perfil(axis,onsets,timestamps, onsets_style='colors', c1="red"
       data = [-x for x in data]
     # axis.plot(data, color=c2, label="During Blue")
     axis.bar([x+w for x in R],data,w, color=c2, label="During Blue")
-  
+
+  elif 'pair' in onsets_style:
+    data = get_rate(zip(onsets[0], onsets[1]),timestamps)
+    N = len(data)
+    R = range(N)
+    if doreversed:
+      data = [-x for x in data]
+      
+    var = w * nsize
+    print var, N
+    axis.bar([x+var for x in R],data,w, color=c1)
+    # axis.bar(range(N),data,w, color=c1)
+ 
   elif 'positions' in onsets_style:
     # left
     data = get_rate(zip(onsets,onsets[1:]),timestamps[0])
