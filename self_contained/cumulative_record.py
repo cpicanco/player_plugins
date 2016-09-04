@@ -101,12 +101,24 @@ if __name__ == '__main__':
 # drawing #
 ###########
 
+    # paths = [
+    #          "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/000",
+    #          "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/001",
+    #          "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/002",
+    #          "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/003"
+    #         ]
+
+    # paths = [
+    # "/home/rafael/documents/doutorado/data_doc/010-Iguaracy/2015-05-25/000/",
+    # "/home/rafael/documents/doutorado/data_doc/010-Iguaracy/2015-05-25/001/",
+    # "/home/rafael/documents/doutorado/data_doc/010-Iguaracy/2015-05-25/000/"
+    # ]
+
     paths = [
-             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/000",
-             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/001",
-             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/002",
-             "/home/rafael/documents/doutorado/data_doc/014-Acsa/2015-05-26/003"
-            ]
+    "/home/rafael/documents/doutorado/data_doc/006-Renan/2015-05-20/000/",
+    "/home/rafael/documents/doutorado/data_doc/006-Renan/2015-05-20/001/",
+    "/home/rafael/documents/doutorado/data_doc/006-Renan/2015-05-20/002/"
+    ]
 
     # global vars
     data = []

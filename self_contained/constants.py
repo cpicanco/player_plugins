@@ -35,3 +35,4 @@ PIXELS_PER_DEGREE = get_pixels_per_degree(SCREEN_WIDTH_PX, SCREEN_HEIGHT_PX, SCR
 if __name__ == '__main__':
   print 'width:', SCREEN_WIDTH_DEG, 'height', SCREEN_HEIGHT_DEG
   print 'room_lux:',(LIGHT_DESIGN_LUMENS * 4.0)/ROOM_LOW_AREA
+

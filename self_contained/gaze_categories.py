@@ -9,15 +9,15 @@
 '''
 import os
 import sys
-
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn import metrics
 #from sklearn.preprocessing import StandardScaler
-
+from glob import glob
 from methods import stimuli_onset, all_stimuli,color_pair
-from temporal_perfil import plot_temporal_perfil
+from temporal_perfil import plot_temporal_perfil, draw_all
 
 def categorize_points(src_xy, eps = 0.06, min_samples = 1000, return_dict=False):
 	# so far no need for scaling, our data is assumed to be gaussian and normalized
@@ -144,81 +144,86 @@ def plot_dbscan(src_xy, dbsc, doplot=False):
 		plt.show()
 	return dictionary
 
-if __name__ == '__main__':
-	
-	# Targets
+def draw_single(src_dir, show=False):
+# Targets
 	BlueLeft = '#011efe'
 	RedLeft = '#fe0000'
 
 	# Distractors
-	RedRight = '#ffd3b6' #fe8181'
-	BlueRight = '#a8e6cf' #'#77aaff'
+	GreenRight = '#49ac15' 
+	CianoRight = '#a8e6cf' 
 
-	# paths = ['000',
-	# 		 '001',
-	# 		 '002',
-	# 		 '003']
+	ID = os.path.basename(os.path.dirname(src_dir))
+	basepath = os.path.dirname(os.path.dirname(src_dir))
 
-	# root = '/home/pupil/_rafael/data_doc/014-Acsa/2015-05-26/'
-	# data = [{'eps':0.06, 'min_samples':600},
-	# 		{'eps':0.06, 'min_samples':600},
-	# 		{'eps':0.06, 'min_samples':600},
-	# 		{'eps':0.06, 'min_samples':600}]
+	print src_dir, os.path.join(basepath,'P005/2015-05-19')
 
-	# root = '/home/pupil/_rafael/data_doc/013-Oziele/2015-05-26/'
-	# data = [{'eps':0.06, 'min_samples':1700},
-	# 		{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000}]
+	if src_dir == os.path.join(basepath,'P001/2015-05-19'):
+		data = [{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000}]
 
-	paths = ['000',
-			 '001',
-			 '002']
+	elif src_dir == os.path.join(basepath,'P001/2015-05-27'):
+		data = [{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000}]
 
-	root = '/home/pupil/_rafael/data_doc/009-Rebeca/2015-05-25/'
-	data = [{'eps':0.065, 'min_samples':1700},
-			{'eps':0.065, 'min_samples':1300},
-			{'eps':0.065, 'min_samples':1200}]
+	elif src_dir == os.path.join(basepath,'P002/2015-05-19'):
+		data = [{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000}]
+
+	elif src_dir == os.path.join(basepath,'P002/2015-05-20'):
+		data = [{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':500}]
+
+	elif src_dir == os.path.join(basepath,'P003/2015-05-20'):
+		data = [{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':800}]
+
+	elif src_dir == os.path.join(basepath,'P004/2015-05-20'):
+		data = [{'eps':0.06, 'min_samples':1500},
+						{'eps':0.06, 'min_samples':1500},
+						{'eps':0.06, 'min_samples':1500}]
+
+	elif src_dir == os.path.join(basepath,'P005/2015-05-19'):
+		data = [{'eps':0.08, 'min_samples':500},
+						{'eps':0.07, 'min_samples':500},
+						{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000}]
+
+	elif src_dir == os.path.join(basepath,'P006/2015-05-25'):
+		data = [{'eps':0.065, 'min_samples':1700},
+						{'eps':0.065, 'min_samples':1300},
+						{'eps':0.065, 'min_samples':1200}]
 
 
-	# root = '/home/pupil/_rafael/data_doc/004-Cristiane/2015-05-27/'
-	# data = [{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000}]
+	elif src_dir == os.path.join(basepath,'P007/2015-05-25'):
+		data = [{'eps':0.06, 'min_samples':1200},
+						{'eps':0.06, 'min_samples':1200},
+						{'eps':0.06, 'min_samples':1200}]
 
-	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-19/'
-	# data = [{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000}]
+	elif src_dir == os.path.join(basepath,'P008/2015-05-26'):
+		data = [{'eps':0.06, 'min_samples':1200},
+						{'eps':0.06, 'min_samples':1200},
+						{'eps':0.06, 'min_samples':1200}]
 
-	# root = '/home/pupil/_rafael/data_doc/005-Marco/2015-05-20/'
-	# data = [{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':500}]
+	elif src_dir == os.path.join(basepath,'P009/2015-05-26'):
+		data = [{'eps':0.06, 'min_samples':1700},
+						{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000},
+						{'eps':0.06, 'min_samples':1000}]
 
-	# root = '/home/pupil/_rafael/data_doc/006-Renan/2015-05-20'
-	# data = [{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':1000},
-	# 		{'eps':0.06, 'min_samples':800}]
+	elif src_dir == os.path.join(basepath,'P010/2015-05-26'):
+		data = [{'eps':0.06, 'min_samples':600},
+						{'eps':0.06, 'min_samples':600},
+						{'eps':0.06, 'min_samples':600},
+						{'eps':0.06, 'min_samples':600}]
 
-	# root = '/home/pupil/_rafael/data_doc/011-Priscila/2015-05-26/'
-	# data = [{'eps':0.06, 'min_samples':1200},
-	# 		{'eps':0.06, 'min_samples':1200},
-	# 		{'eps':0.06, 'min_samples':1200}]
-
-	# root = '/home/pupil/_rafael/data_doc/010-Iguaracy/2015-05-25/'
-	# data = [{'eps':0.06, 'min_samples':1200},
-	# 		{'eps':0.06, 'min_samples':1200},
-	# 		{'eps':0.06, 'min_samples':1200}]
-
-	# root = '/home/pupil/_rafael/data_doc/007-Gabriel/2015-05-20/'
-	# data = [{'eps':0.06, 'min_samples':1500},
-	# 		{'eps':0.06, 'min_samples':1500},
-	# 		{'eps':0.06, 'min_samples':1500}]
-
-	root = os.path.join(root, 'raw_data_organized')
+	paths = sorted(glob(os.path.join(src_dir,'0*')))
 	for i, path in enumerate(paths):	
-		data_folder = os.path.join(root, path)
+		data_folder = os.path.join(src_dir, path)
 		beha_events_path = os.path.join(data_folder, "behavioral_events.txt")
 		gaze_events_path = os.path.join(data_folder, 'gaze_coordenates_on_screen.txt')
 		
@@ -240,17 +245,19 @@ if __name__ == '__main__':
 		data[i]['time_categorized'] = categorize_timestamps(data[i]['src_timestamps'],data[i]['dbsc'])
 
 
-	x_label = 'Time block'
-	y_label = 'gaze rate (r/sec)'
-	title = 'gaze rate on left/right by time block'
+	x_label = 'Ciclo'
+	y_label = 'dir. < Taxa (gaze/s) > esq.'
+	title = 'Particip. '+ID+': Taxa de movim. oculares durante cada cor'
 
 	n_plots = len(data)
 	if n_plots == 1:
-		figsize = (6, 4)
+		figsize = (4, 4)
 	elif n_plots == 2:
-		figsize = (11, 4)
+		figsize = (8, 4)
+	elif n_plots == 3:
+		figsize = (12, 4)
 	else:
-		figsize = (16, 4)
+		figsize = (14, 4)
 
 	# figure.add_axes([0.1, 0.1, 0.8, 0.8], frameon = 0)
 	figure, axarr = plt.subplots(1, n_plots, sharey=True, sharex=False, figsize=figsize) 
@@ -266,7 +273,7 @@ if __name__ == '__main__':
 		for c, n in zip(turnover,turnover[1:]):
 			if c != n:
 				turnover_count += 1
-		print 'turnover_count:',turnover_count,'\n'
+		print '\n','turnover_count:',turnover_count
 
 
 		left_right_xy = []
@@ -285,55 +292,48 @@ if __name__ == '__main__':
 		# all stimuli, left and right
 		#plot_temporal_perfil(axarr[i],all_stimuli(data[i]['beha_data']), left_right_timestamps,"positions")
 
-		# r1, r2, b1, b2, r1
+		# v+v, v+c, a+v, a+c
 		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],0), left_right_timestamps[0],'pair', c1=RedLeft, nsize=0)
-		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],0), left_right_timestamps[1],'pair', c1=RedRight, nsize=0, doreversed=True)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],0), left_right_timestamps[1],'pair', c1=GreenRight, nsize=0, doreversed=True)
 
 		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],1), left_right_timestamps[0],'pair', c1=RedLeft, nsize=1)
-		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],1), left_right_timestamps[1],'pair', c1=RedRight, nsize=1, doreversed=True)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],1), left_right_timestamps[1],'pair', c1=CianoRight, nsize=1, doreversed=True)
 
 		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],2), left_right_timestamps[0],'pair', c1=BlueLeft, nsize=2)
-		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],2), left_right_timestamps[1],'pair', c1=BlueRight, nsize=2, doreversed=True)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],2), left_right_timestamps[1],'pair', c1=CianoRight, nsize=2, doreversed=True)
 						
 		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],3), left_right_timestamps[0],'pair', c1=BlueLeft, nsize=3)
-		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],3), left_right_timestamps[1],'pair', c1=BlueRight, nsize=3, doreversed=True)
+		plot_temporal_perfil(axarr[i],color_pair(data[i]['beha_data'],3), left_right_timestamps[1],'pair', c1=GreenRight, nsize=3, doreversed=True)
 		
-
-
 		# all stimuli (red blue), left
 		# plot_temporal_perfil(axarr[i],stimuli_onset(data[i]['beha_data']), left_right_timestamps[0],'colors', c1=RedLeft, c2=BlueLeft)
 	
 		# all stimuli (red blue), right
 		# plot_temporal_perfil(axarr[i],stimuli_onset(data[i]['beha_data']), left_right_timestamps[1],"colors",c1=RedRight,c2=BlueRight, doreversed=True)
-	
-	# plt.ylim(ymin = -30)
+	ticks = [30,20,10,0,10,20,30]
+	axarr[0].set_yticklabels(labels=ticks)
+	#([x for x in range(-30,31)],)
+
+	plt.ylim(ymin = -30)
 	plt.ylim(ymax = 30)
 
-	figure.subplots_adjust(wspace=0.1,left=0.05, right=.98,bottom=0.1,top=0.92)
-			# figure.tight_layout()
-				
-	plt.show()
 
-# clusters = categorize_points(src_xy, True)
-# for key, value in clusters.iteritems():
-# 	print key, ':', len(value)
-# 	if len(value) > 0:
+	# figure.subplots_adjust(wspace=0.1,left=0.05, right=.98,bottom=0.1,top=0.92)
+	axarr[0].set_ylabel(y_label)
+	figure.tight_layout()
+	if show:			
+		plt.show()
 
-# 		# for normalized 2d data with p(x, y) where 1 => x, y >= 0
-# 		axes = plt.gca()
-# 		axes.set_ylim(ymax = 1, ymin = 0)
-# 		axes.set_xlim(xmax = 1, xmin = 0)
-# 		plt.plot(value[:,0], value[:,1], 'o')
-# 		plt.title(key)
-# 		plt.show()
+if __name__ == '__main__':
+	font = {'family' : 'serif',
+					'size'   : 16}
 
-# look rate at left when red/blue is present
-# look rate at right when red/blu is present
+	matplotlib.rc('font', **font)
+	#matplotlib.rcParams.update({'font.size': 22})
+
+	draw_all('/home/rafael/git/abpmc-2016/',draw_single,'taxa_movimentos_oculares_A.png')
+
+	#draw_single('/home/rafael/git/abpmc-2016/P005/2015-05-19', True)
+
+
 # note: fps should be as constant as possible
-
-# for key, value in time_categorized.iteritems():
-# 	print key, ':', len(value)
-# 	if len(value) > 0 and 'cluster' in key:
-# 		i = int(key[-1])
-# 		plot_temporal_perfil(axarr[i], stimuli_onset(beha_data), value)
-# 		axarr[i].set_title(key)
