@@ -14,8 +14,10 @@ import csv
 import numpy as np
 from ast import literal_eval
 from glob import glob
+from fix_time_dups import has_duplicates, remove_duplicates
 
-def convert(src, dst):
+
+def convert(src, dst, fix_time_dups=False):
 	# output
 	beha_output = os.path.join(dst, 'behavioral_events.txt')
 	gaze_output = os.path.join(dst, 'gaze_coordenates_on_screen.txt')
@@ -33,15 +35,25 @@ def convert(src, dst):
 	aFixationFile = np.genfromtxt(fixa, delimiter="\t",missing_values=["NA"],
 	      filling_values=None,names=True, autostrip=True, dtype=None)
 
-	time_start = np.min(aGazeFile['gaze_timestamp'])
+	if fix_time_dups:
+		if has_duplicates(aGazeFile['gaze_timestamp']):
+			aGazeFile['gaze_timestamp'] = remove_duplicates(aGazeFile['gaze_timestamp'])
 
+		if has_duplicates(aFixationFile['start_timestamp']):
+			aFixationFile['start_timestamp'] = remove_duplicates(aFixationFile['start_timestamp'])
+
+	time_start = aGazeFile['gaze_timestamp'][0]
+
+	print repr(aGazeFile['gaze_timestamp'][0])
+    
 	# gaze events
 	with open(gaze_output, 'w+') as f:
 	  f.write("\t".join(('time','x_norm','y_norm'))+'\n')
-	  for line in aGazeFile:
-		  timestamp = '%.3f'%round(line[0]-time_start, 3)
-		  X = '%.3f'%round(line[3], 3)
-		  Y = '%.3f'%round(line[4], 3)
+	  for timestamp, X, Y in zip(aGazeFile['gaze_timestamp'], aGazeFile['x_scaled'], aGazeFile['y_scaled']):
+		  timestamp -= time_start
+		  timestamp = '%.9f'%timestamp
+		  X = '%.3f'%round(X, 3)
+		  Y = '%.3f'%round(Y, 3)
 		  f.write("\t".join((timestamp, X, Y))+'\n')
 
 	# behavioral events
@@ -58,7 +70,7 @@ def convert(src, dst):
 			# stimuli events
 			for line in timestamps2:
 				trial_no = line[0] 
-				timestamp = '%.3f'%round(line[1].astype('float64')-time_start, 3)
+				timestamp = '%.9f'%(line[1].astype('float64')-time_start)
 				event = line[2]
 
 				if event == '1':
@@ -102,7 +114,7 @@ def convert(src, dst):
 			for line in t:
 				(trial_no, timestamp, event_s) = literal_eval(line)
 				left, top, right, bottom = 'NA', 'NA', 'NA', 'NA'
-				timestamp = '%.3f'%round(float(timestamp)-time_start, 3) 
+				timestamp = '%.9f'%(float(timestamp)-time_start) 
 				event = line[1]
 
 				if 'S' in event_s:
@@ -126,9 +138,10 @@ def convert(src, dst):
 	# fixations
 	with open(fixa_output, 'w+') as f:
 	  f.write("\t".join(('id','start_time', 'duration','norm_pos_x','norm_pos_y'))+'\n')
-	  for line in aFixationFile:
-		  timestamp = round(line[1]-time_start, 3)
-		  duration = round(line[2], 3)
-		  x = round(line[5], 3)
-		  y = round(line[6], 3)
-		  f.write("\t".join((str(line[0]),'%.3f'%timestamp, '%.3f'%duration, '%.3f'%x, '%.3f'%y))+'\n')
+	  c = zip(aFixationFile['id'],aFixationFile['start_timestamp'],aFixationFile['duration'],aFixationFile['norm_pos_x'],aFixationFile['norm_pos_y'])
+	  for fid, timestamp, duration, X, Y in c:
+		  timestamp -= time_start
+		  duration = '%.3f'%round(duration, 3)
+		  X = '%.3f'%round(X, 3)
+		  Y = '%.3f'%round(Y, 3)
+		  f.write("\t".join((str(fid),timestamp, duration, X, Y))+'\n')

@@ -52,7 +52,7 @@ def copy_and_format(pupil_data_directory, destination_directory=None):
 						if exc.errno != errno.EEXIST:
 							raise
 
-				convert(src_base, dst_base)
+				convert(src_base, dst_base, True)
 				# src_files = [
 				# 			glob(os.path.join(r_d, 'fixations_on_surface_Screen*'))[0],
 				# 			glob(os.path.join(r_d, 'gaze_positions_on_surface_Screen*'))[0],
@@ -89,7 +89,7 @@ if __name__ == '__main__':
 	# else:
 	print 'origin:',os.path.dirname(os.path.abspath(__file__))
 
-	source_dir = '/home/pupil/_rafael/data_doc/'
+	source_dir = '/home/rafael/doutorado/data_doc/'
 	inner_paths = [
 		'004-Cristiane/2015-05-19',
 		'004-Cristiane/2015-05-27',
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 	]
 	source_directories = [os.path.join(source_dir,s) for s in inner_paths]
 
-	source_dir = '/home/pupil/_rafael/abpmc'
+	source_dir = '/home/rafael/doutorado/data_org/'
 	inner_paths = [
 		'P001/2015-05-19',
 		'P001/2015-05-27',
