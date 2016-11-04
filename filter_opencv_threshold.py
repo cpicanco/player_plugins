@@ -23,7 +23,10 @@ class Filter_Opencv_Threshold(Plugin):
     def __init__(self, g_pool, threshold=177, thresh_mode="BINARY", otsu=False):
         super(Filter_Opencv_Threshold, self).__init__(g_pool)
         # run before all plugins
-        self.order = .1
+        # self.order = .1
+
+        # run after all plugins
+        self.order = .99
 
         # initialize empty menu
         self.menu = None
