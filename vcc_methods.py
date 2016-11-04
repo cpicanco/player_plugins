@@ -344,7 +344,7 @@ def get_codes(chars, base):
 def get_512_colors():
     # for 9 we need 512 colors..
     colors = []
-    for _ in xrange(1,512):
-        colors.append((0, 0, 255, 20))
+    for _ in xrange(1,513):
+        colors.append((0, 0, 0, 20))
     return colors
 
