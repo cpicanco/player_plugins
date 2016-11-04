@@ -28,7 +28,7 @@ from pyglui import ui
 from methods import denormalize
 
 # pt_codes references
-_POINT = 0
+_XY = 0
 _CODE = 1
 
 # channel constants
@@ -74,7 +74,7 @@ class Vis_Circle_On_Contours(Plugin):
 
         # detector
         self.candraw = False
-        self.expected_contours = 2
+        self.expected_contours = 9
         self.ellipse_size = 2.0
         self.epsilon = epsilon
         self.show_edges = True
@@ -101,19 +101,19 @@ class Vis_Circle_On_Contours(Plugin):
 
         self.ColorDictionary = dict(zip(self.codes, self.colors))
 
-        self.ColorDictionary['+1-2'] = (1, 0, 0, self.a) # blue
-        self.ColorDictionary['-1+2'] = (0, 1, 0, self.a) # green
+        # self.ColorDictionary['+1-2'] = (1, 0, 0, self.a) # blue
+        # self.ColorDictionary['-1+2'] = (0, 1, 0, self.a) # green
 
         # overide some target colors
-        # self.ColorDictionary['+1-2-3-4-5-6-7-8-9'] = (1, 0, 0, self.a) # blue
-        # self.ColorDictionary['-1+2-3-4-5-6-7-8-9'] = (0, 1, 0, self.a) # green
-        # self.ColorDictionary['-1-2+3-4-5-6-7-8-9'] = (1, 1, 0, self.a) # blue marine
-        # self.ColorDictionary['-1-2-3+4-5-6-7-8-9'] = (0, 1, 1, self.a) # yellow
-        # self.ColorDictionary['-1-2-3-4+5-6-7-8-9'] = (1, 0, 1, self.a) # purple
-        # self.ColorDictionary['-1-2-3-4-5+6-7-8-9'] = (0, 0, 1, self.a) # red
-        # self.ColorDictionary['-1-2-3-4-5-6+7-8-9'] = (1, 1, 1, self.a) # white
-        # self.ColorDictionary['-1-2-3-4-5-6-7+8-9'] = (0.5, 0.5, 0.5, self.a)  # gray
-        # self.ColorDictionary['-1-2-3-4-5-6-7-8+9'] = (0.75, 0.2, 0.5, self.a)  # ?
+        self.ColorDictionary['+1-2-3-4-5-6-7-8-9'] = (1, 0, 0, self.a) # blue
+        self.ColorDictionary['-1+2-3-4-5-6-7-8-9'] = (0, 1, 0, self.a) # green
+        self.ColorDictionary['-1-2+3-4-5-6-7-8-9'] = (1, 1, 0, self.a) # blue marine
+        self.ColorDictionary['-1-2-3+4-5-6-7-8-9'] = (0, 1, 1, self.a) # yellow
+        self.ColorDictionary['-1-2-3-4+5-6-7-8-9'] = (1, 0, 1, self.a) # purple
+        self.ColorDictionary['-1-2-3-4-5+6-7-8-9'] = (0, 0, 1, self.a) # red
+        self.ColorDictionary['-1-2-3-4-5-6+7-8-9'] = (1, 1, 1, self.a) # white
+        self.ColorDictionary['-1-2-3-4-5-6-7+8-9'] = (0.5, 0.5, 0.5, self.a)  # gray
+        self.ColorDictionary['-1-2-3-4-5-6-7-8+9'] = (0.75, 0.2, 0.5, self.a)  # ?
         
         #self.ColorDictionary['+1'] = (230, 50, 230, 150)
         #self.ColorDictionary['-1'] = (0, 0, 0, 255) 
@@ -142,15 +142,15 @@ class Vis_Circle_On_Contours(Plugin):
         
         alfa = self.ellipse_size
 
-        if self.show_edges:
-            #frame.img = cv2.merge(merge)
-            #cv2.drawContours(frame.img, contained_contours,-1, (0,0,255))
-            if ellipses:
-                for ellipse in ellipses:
-                            center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
-                            axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
-                            angle = int( round(ellipse[2] ))
-                            cv2.ellipse(img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
+        # if self.show_edges:
+        #     #frame.img = cv2.merge(merge)
+        #     #cv2.drawContours(frame.img, contained_contours,-1, (0,0,255))
+        #     if ellipses:
+        #         for ellipse in ellipses:
+        #             center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
+        #             axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
+        #             angle = int( round(ellipse[2] ))
+        #             cv2.ellipse(img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
 
 
         # we need denormalized points for point polygon tests    
@@ -197,15 +197,16 @@ class Vis_Circle_On_Contours(Plugin):
 
             for cluster_set in cluster_hierarchy:
                 if len(cluster_set) > 0:
-                    if True:
-                        for ellipse in cluster_set:
-                            center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
-                            axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
-                            angle = int( round(ellipse[2] ))
-                            cv2.ellipse(img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
+                    # use only the smallest (first) ellipse for reference
+                    ellipse = cluster_set[0]
+                    stm_contours.append(ellipse_to_contour(ellipse, alfa))
 
-                    # use only the biggest (last) ellipse for reference
-                    stm_contours.append(ellipse_to_contour(cluster_set[-1], alfa))
+                    if self.show_edges:
+                        # for ellipse in cluster_set:
+                        center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
+                        axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
+                        angle = int( round(ellipse[2] ))
+                        cv2.ellipse(img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
 
             #print stm_contours
             # pt_codes is a list tuples:
@@ -235,17 +236,17 @@ class Vis_Circle_On_Contours(Plugin):
         # each code specifies the color of each point
         # in accordance with the self.ColorDictionary
         if contour_count > 0:
-            for x in xrange(len(pt_codes)):
+            for pt in pt_codes:
                 try:
-                    #print pt_codes[x]
-                    color = self.ColorDictionary[pt_codes[x][_CODE]]
+                    #print pt
+                    color = self.ColorDictionary[pt[_CODE]]
                 except KeyError, e:
                     #print e
                     color = map(lambda x: int(x * 255),(0, 0, 0, self.a))
 
                 transparent_circle(
                             img,
-                            pt_codes[x][_POINT],
+                            pt[_XY],
                             radius = int(radius/2),
                             color = color,
                             thickness = thickness    )
@@ -258,7 +259,7 @@ class Vis_Circle_On_Contours(Plugin):
                     radius = radius,
                     color = map(lambda x: int(x * 255),self.colors[-1]),
                     thickness = thickness    )
-                cv2.putText(img, '?', (int(pt[0] -10),int(pt[1]) +10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 1, lineType = cv2.CV_AA )
+                cv2.putText(frame.img, '?', (int(pt[0] -10),int(pt[1]) +10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 1, lineType = cv2.CV_AA )
     
     def init_gui(self):
         # initialize the menu
