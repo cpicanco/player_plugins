@@ -29,8 +29,8 @@ from reference_surface import Reference_Surface
 class Screen_Tracker(Surface_Tracker):
     """docstring
     """
-    def __init__(self,g_pool,mode="Show markers and frames",min_marker_perimeter = 40):
-        super(Screen_Tracker, self).__init__(g_pool)
+    def __init__(self,g_pool,mode="Show markers and frames",min_marker_perimeter = 40,robust_detection=True):
+        super(Screen_Tracker, self).__init__(g_pool,mode,min_marker_perimeter,robust_detection)
         for p in g_pool.plugins:
             if p.class_name == 'Marker_Detector':
                 p.alive = False

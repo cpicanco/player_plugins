@@ -384,7 +384,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
                     frame_idx += section.start
                     for i, gp in enumerate(self.gaze_on_srf_by_frame_idx(frame_idx,c_e['m_from_screen'])):
                         if gp['on_srf']:
-                            if gp['base']['confidence'] >= self.gaze_correction_min_confidence:
+                            if gp['base_data']['confidence'] >= self.gaze_correction_min_confidence:
                                 all_gaze.append({'frame':frame_idx,'i':i,'norm_pos':gp['norm_pos']})
                             else:
                                 gaze_no_confidence += 1

@@ -52,7 +52,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
     Both caches are build up over time. The marker cache is also session persistent.
     See marker_tracker.py for more info on this marker tracker.
     """
-    def __init__(self,g_pool,mode="Show Screen"):
+    def __init__(self,g_pool,mode="Show Markers and Surfaces", min_marker_perimeter = 100,robust_detection=True):
         #self.g_pool = g_pool
         Trim_Marks_Extended_Exist = False
         for p in g_pool.plugins:
@@ -72,8 +72,8 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         self.gaze_correction_block_size = '1000'
         self.gaze_correction_min_confidence = 0.98
         self.gaze_correction_k = 2
-        self.heatmap_use_kdata = True
-        super(Offline_Screen_Tracker, self).__init__(g_pool)
+        self.heatmap_use_kdata = False
+        super(Offline_Screen_Tracker, self).__init__(g_pool,mode,min_marker_perimeter,robust_detection)
 
     def load_surface_definitions_from_file(self):
         self.surface_definitions = Persistent_Dict(os.path.join(self.g_pool.rec_dir,'surface_definitions'))
@@ -101,7 +101,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         forking_enable(0) #for MacOs only
         from screen_detector_cacher import fill_cache
         visited_list = [False if x == False else True for x in self.cache]
-        video_file_path =  self.g_pool.capture.src
+        video_file_path =  self.g_pool.capture.source_path
         timestamps = self.g_pool.capture.timestamps
         self.cache_queue = Queue()
         self.cacher_seek_idx = Value('i',0)
@@ -114,10 +114,10 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             idx,c_m = self.cache_queue.get()
             self.cache.update(idx,c_m)
             for s in self.surfaces:
-                s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,idx=idx)
-            if self.cacher_run.value == False:
-                pass
-                # self.recalculate()
+                s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,min_id_confidence=self.min_id_confidence,idx=idx)
+            # if self.cacher_run.value == False:
+            #     self.recalculate()
+
 
     def screen_segmentation(self):
         """

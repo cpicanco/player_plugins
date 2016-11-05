@@ -109,7 +109,7 @@ def detect_screens(gray_img, draw_contours=False):
 
                 r_norm = r/np.float32((gray_img.shape[1],gray_img.shape[0]))
                 r_norm[:,:,1] = 1-r_norm[:,:,1]
-                screen = {'id':msg,'verts':r,'perimeter':cv2.arcLength(r,closed=True),'centroid':centroid,"frames_since_true_detection":0}
+                screen = {'id':msg,'verts':r,'perimeter':cv2.arcLength(r,closed=True),'centroid':centroid,"frames_since_true_detection":0,"id_confidence":1.}
              
                 if screens.has_key(screen['id']) and screens[screen['id']]['perimeter'] > screen['perimeter']:
                     pass

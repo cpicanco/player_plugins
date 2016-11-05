@@ -11,21 +11,24 @@
 
 # hacked from marker_detector_cacher
 
+class Global_Container(object):
+    pass
+
 def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker_perimeter):
     '''
     this function is part of marker_detector it is run as a seperate process.
     it must be kept in a seperate file for namespace sanatisation
     '''
     import os
-    import logging
-    logger = logging.getLogger(__name__+' with pid: '+str(os.getpid()) )
-    logger.debug('Started cacher process for Marker Detector')
+    #import logging
+    #logger = logging.getLogger(__name__+' with pid: '+str(os.getpid()) )
+    #logger.debug('Started cacher process for Marker Detector')
     import cv2
-    from video_capture import File_Capture, EndofVideoFileError,FileSeekError
+    from video_capture import File_Source, EndofVideoFileError,FileSeekError
     from screen_detector_methods import detect_screens
-    aperture = 9
+    #aperture = 9
     markers = []
-    cap = File_Capture(video_file_path,timestamps=timestamps)
+    cap = File_Source(Global_Container(),video_file_path,timestamps=timestamps)
 
     def next_unvisited_idx(frame_idx):
         try:
@@ -45,19 +48,19 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
                     next_unvisited = visited_list.index(False,0,frame_idx)
                 except ValueError:
                     #no unvisited sites left. Done!
-                    logger.debug("Caching completed.")
+                    #logger.debug("Caching completed.")
                     next_unvisited = None
         return next_unvisited
 
     def handle_frame(next):
         if next != cap.get_frame_index():
             #we need to seek:
-            logger.debug("Seeking to Frame %s" %next)
+            #logger.debug("Seeking to Frame %s" %next)
             try:
                 cap.seek_to_frame(next)
             except FileSeekError:
                 #could not seek to requested position
-                logger.warning("Could not evaluate frame: %s."%next)
+                #logger.warning("Could not evaluate frame: %s."%next)
                 visited_list[next] = True # this frame is now visited.
                 q.put((next,[])) # we cannot look at the frame, report no detection
                 return
@@ -67,9 +70,9 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
         try:
             frame = cap.get_frame_nowait()
         except EndofVideoFileError:
-            logger.debug("Video File's last frame(s) not accesible")
+            #logger.debug("Video File's last frame(s) not accesible")
              #could not read frame
-            logger.warning("Could not evaluate frame: %s."%next)
+            #logger.warning("Could not evaluate frame: %s."%next)
             visited_list[next] = True # this frame is now visited.
             q.put((next,[])) # we cannot look at the frame, report no detection
             return
@@ -84,7 +87,7 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
         if seek_idx.value != -1:
             next = seek_idx.value
             seek_idx.value = -1
-            logger.debug("User required seek. Marker caching at Frame: %s"%next)
+            #logger.debug("User required seek. Marker caching at Frame: %s"%next)
 
 
         #check the visited list
@@ -96,8 +99,8 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
             handle_frame(next)
 
 
-    logger.debug("Closing Cacher Process")
-    cap.close()
+    #logger.debug("Closing Cacher Process")
+    cap.cleanup()
     q.close()
     run.value = False
     return
