@@ -610,4 +610,66 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         if kmeans_plugin_alive:
             kmeans_plugin.alive = True
 
+
+    def invalidate(self):
+        self.cache = None
+        self.heatmap = None
+        self.gaze_cloud = None
+    
+    def move_vertex(self, vertex_index, newpos, incremental=False):
+        """
+        ######### #########
+        # 0 . 1 # # tl.tr #
+        # .   . # # .   . #
+        # 3 . 2 # # bl.br #
+        # uv #### #########
+
+        #########
+        # 3 . 2 #
+        # .   . #
+        # 0 . 1 #
+        # sv #### 
+        """
+        if incremental:
+            before = self.markers.values()[0].uv_coords # uv
+        else:
+            before = marker_corners_norm # sv
+        after = before.copy()
+        after[vertex_index] = newpos
+        transform = cv2.getPerspectiveTransform(after,before)
+        for m in self.markers.values():
+            m.uv_coords = cv2.perspectiveTransform(m.uv_coords,transform)
+
+    @property
+    def left_top(self):
+        return self.markers.values()[0].uv_coords[0][0]
+
+    @left_top.setter
+    def left_top(self, value):
+        self.move_vertex(0,value, incremental=True)
+
+    @property
+    def right_top(self):
+        return self.markers.values()[0].uv_coords[1][0]
+
+    @right_top.setter
+    def right_top(self, value):
+        self.move_vertex(1,value, incremental=True)
+
+    @property
+    def left_bottom(self):
+        return self.markers.values()[0].uv_coords[3][0]
+
+    @left_bottom.setter
+    def left_bottom(self, value):
+        self.move_vertex(3,value, incremental=True)
+
+    @property
+    def right_bottom(self):
+        return self.markers.values()[0].uv_coords[2][0]
+
+    @right_bottom.setter
+    def right_bottom(self, value):
+        self.move_vertex(2  ,value, incremental=True)
+
 del Offline_Reference_Surface

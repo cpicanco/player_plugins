@@ -118,6 +118,58 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             # if self.cacher_run.value == False:
             #     self.recalculate()
 
+# function TMatrixForm.GetMatrix(AMonitor: integer): TStmMatrix;
+# var
+#   i,j,
+#   LRowCount,LColCount,SHeight,SWidth,SYGap,SXGap,SLeft,STop: integer;
+# begin
+#   SHeight := 150;
+#   SWidth := 150;
+#   SYGap := 100;
+#   SXGap := 100;
+#   SLeft := 0;
+#   STop := 0;
+#   LRowCount := 3;
+#   LColCount := 3;
+#   SetLength(Result, LRowCount,LColCount);
+#   for i := Low(Result) to High(Result) do
+#     begin
+#       SLeft := ((SWidth+SXGap)*i)+(Screen.Monitors[AMonitor].Width div 2)
+#                   -(((SWidth+SXGap)*LColCount) div 2)+((SXGap) div 2);
+#       for j:= Low(Result[i]) to High(Result[i]) do
+#         begin
+#           STop := ((SHeight+SYGap)*j)+(Screen.Monitors[AMonitor].Height div 2)
+#                -(((SHeight+SYGap)*LRowCount) div 2)+(SYGap div 2);
+#           Result[i][j].Left := SLeft;
+#           Result[i][j].Top := STop;
+#           Result[i][j].Width := SWidth;
+#           Result[i][j].Height := SHeight;
+#         end;
+#     end;
+# end;
+
+    def screen_segmentation_m(self):
+        def midpoint(v1, v2):
+            return np.array([(v1[0]+v2[0])/2,(v1[1]+v2[1])/2])
+
+        if not self.mode == 'Show Markers and Surfaces':
+            logger.error('Please, select the "Show Markers and Surfaces" option at the Mode Selector.')
+            return 
+
+        for s in self.surfaces:
+            # we need a copy of the original surface vertices as reference to the calculations
+            lt = s.left_top
+            rt = s.right_top
+            lb = s.left_bottom
+            rb = s.right_bottom
+
+            # midtop = np.array(midpoint(lt, rt))
+            # midbottom = np.array(midpoint(lb,rb))
+            s.left_top = midpoint(lt,lb) # midleft
+            s.right_top = midpoint(rt,rb) # midright 
+         
+            s.invalidate()
+            logger.info(str(s.left_top))     
 
     def screen_segmentation(self):
         """
@@ -134,8 +186,8 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         sv
 
         """
-        if not self.mode == 'Surface edit mode':
-            logger.error('Please, select the "Surface edit mode" option at the Mode Selector.')
+        if not self.mode == 'Show Markers and Surfaces':
+            logger.error('Please, select the "Show Markers and Surfaces" option at the Mode Selector.')
             return
 
         correcly_named = [False, False]
@@ -149,47 +201,26 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             logger.error('Please, create two identical surfaces and name them as "Left" and "Right".')
             return
             
-        surface_vertices_to_move = []
         for s in self.surfaces:
             s.real_world_size['x'] = s.real_world_size['x']/2.
+            lt = s.left_top
+            rt = s.right_top
+            lb = s.left_bottom
+            rb = s.right_bottom
+
+            midtop = np.array([(lt[0]+rt[0])/2,(lt[1]+rt[1])/2])
+            midbottom = np.array([(lb[0]+rb[0])/2,(lb[1]+rb[1])/2])
+
             if s.name == 'Left':
-                uv = s.markers.values()[0].uv_coords
-                # original marker position
-                surface_vertices_to_move.append((s, 3, uv[0]))
-                surface_vertices_to_move.append((s, 2, uv[1]))
-                surface_vertices_to_move.append((s, 1, uv[2]))  
-                surface_vertices_to_move.append((s, 0, uv[3]))
-
-                # take the midpoint of the segment to the new position
-                new_pos = [(uv[0][0][0] + uv[1][0][0])/2., (uv[0][0][1] + uv[1][0][1])/2.]
-                surface_vertices_to_move.append((s, 2, new_pos))
-
-                new_pos = [(uv[2][0][0] + uv[3][0][0])/2., (uv[2][0][1] + uv[3][0][1])/2.]
-                surface_vertices_to_move.append((s, 1, new_pos))
+                s.right_top = midtop
+                s.right_bottom = midbottom
 
             if s.name == 'Right':
-                uv = s.markers.values()[0].uv_coords
-                # original marker position
-                surface_vertices_to_move.append((s, 3, uv[0]))
-                surface_vertices_to_move.append((s, 2, uv[1]))
-                surface_vertices_to_move.append((s, 1, uv[2]))  
-                surface_vertices_to_move.append((s, 0, uv[3]))
-
-                # take the midpoint of the segment to the new position
-                new_pos = [(uv[0][0][0] + uv[1][0][0])/2., (uv[0][0][1] + uv[1][0][1])/2.]
-                surface_vertices_to_move.append((s, 3, new_pos))
-
-                new_pos = [(uv[2][0][0] + uv[3][0][0])/2., (uv[2][0][1] + uv[3][0][1])/2.]
-                surface_vertices_to_move.append((s, 0, new_pos))
-                     
-        for (s, v_idx, new_pos) in surface_vertices_to_move:
-            if s.detected:
-                s.move_vertex(v_idx,np.array(new_pos))
-                s.cache = None
-                self.heatmap = None
-                self.gaze_cloud = None
+                s.left_top = midtop
+                s.left_bottom = midbottom
 
         self.update_gui_markers()
+
       
     def update_gui_markers(self):
 
@@ -206,9 +237,10 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
         self.menu.append(ui.Selector('mode',self,setter=self.set_mode,label='Mode',selection=["Show Markers and Surfaces","Show marker IDs","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
         
-        if self.mode == 'Surface edit mode':
+        if self.mode == 'Show Markers and Surfaces':
             self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
             self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
+            self.menu.append(ui.Button("Matrix segmentation", self.screen_segmentation_m))
         
         if self.mode == 'Show Kmeans Correction':
             self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
@@ -288,54 +320,56 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
     #     #         pass
     #     #         # events.append({'type':'marker_ref_surface','name':s.name,'uid':s.uid,'m_to_screen':s.m_to_screen,'m_from_screen':s.m_from_screen, 'timestamp':frame.timestamp,'gaze_on_srf':s.gaze_on_srf})
 
-
     def recalculate(self):
-        #super(Offline_Screen_Tracker, self).recalculate()
-        # calc heatmaps
-        in_mark = self.g_pool.trim_marks.in_mark
-        out_mark = self.g_pool.trim_marks.out_mark
-        section = slice(in_mark,out_mark)
+        pass
+
+    # def recalculate(self):
+    #     #super(Offline_Screen_Tracker, self).recalculate()
+    #     # calc heatmaps
+    #     in_mark = self.g_pool.trim_marks.in_mark
+    #     out_mark = self.g_pool.trim_marks.out_mark
+    #     section = slice(in_mark,out_mark)
         
-        for s in self.surfaces:
-            if s.defined:
-                s.heatmap_blur = self.heatmap_blur
-                s.heatmap_blur_gradation = self.heatmap_blur_gradation
-                s.heatmap_colormap = self.heatmap_colormap
-                s.heatmap_use_kdata = self.heatmap_use_kdata
-                s.gaze_correction_block_size = self.gaze_correction_block_size
-                s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
-                s.gaze_correction_k = self.gaze_correction_k
+    #     for s in self.surfaces:
+    #         if s.defined:
+    #             s.heatmap_blur = self.heatmap_blur
+    #             s.heatmap_blur_gradation = self.heatmap_blur_gradation
+    #             s.heatmap_colormap = self.heatmap_colormap
+    #             s.heatmap_use_kdata = self.heatmap_use_kdata
+    #             s.gaze_correction_block_size = self.gaze_correction_block_size
+    #             s.gaze_correction_min_confidence = self.gaze_correction_min_confidence
+    #             s.gaze_correction_k = self.gaze_correction_k
 
-                s.generate_gaze_cloud(section)
-                s.generate_gaze_correction(section)
-                s.generate_mean_correction(section)
-                s.generate_heatmap(section)
+    #             s.generate_gaze_cloud(section)
+    #             s.generate_gaze_correction(section)
+    #             s.generate_mean_correction(section)
+    #             s.generate_heatmap(section)
 
 
-        # calc distirbution accross all surfaces.
-        results = []
-        for s in self.surfaces:
-            gaze_on_srf  = s.gaze_on_srf_in_section(section)
-            results.append(len(gaze_on_srf))
-            self.metrics_gazecount = len(gaze_on_srf)
+    #     # calc distirbution accross all surfaces.
+    #     results = []
+    #     for s in self.surfaces:
+    #         gaze_on_srf  = s.gaze_on_srf_in_section(section)
+    #         results.append(len(gaze_on_srf))
+    #         self.metrics_gazecount = len(gaze_on_srf)
 
-        if results == []:
-            logger.warning("No surfaces defined.")
-            return
-        max_res = max(results)
-        results = np.array(results,dtype=np.float32)
-        if not max_res:
-            logger.warning("No gaze on any surface for this section!")
-        else:
-            results *= 255./max_res
-        results = np.uint8(results)
-        results_c_maps = cv2.applyColorMap(results, cv2.COLORMAP_JET)
+    #     if results == []:
+    #         logger.warning("No surfaces defined.")
+    #         return
+    #     max_res = max(results)
+    #     results = np.array(results,dtype=np.float32)
+    #     if not max_res:
+    #         logger.warning("No gaze on any surface for this section!")
+    #     else:
+    #         results *= 255./max_res
+    #     results = np.uint8(results)
+    #     results_c_maps = cv2.applyColorMap(results, cv2.COLORMAP_JET)
 
-        for s,c_map in zip(self.surfaces,results_c_maps):
-            heatmap = np.ones((1,1,4),dtype=np.uint8)*125
-            heatmap[:,:,:3] = c_map
-            s.metrics_texture = Named_Texture()
-            s.metrics_texture.update_from_ndarray(heatmap)
+    #     for s,c_map in zip(self.surfaces,results_c_maps):
+    #         heatmap = np.ones((1,1,4),dtype=np.uint8)*125
+    #         heatmap[:,:,:3] = c_map
+    #         s.metrics_texture = Named_Texture()
+    #         s.metrics_texture.update_from_ndarray(heatmap)
 
     def recalculate_all_sections(self):
         """
