@@ -103,7 +103,8 @@ def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, thres
             # keep only contours                        with parents     and      children
             contained_contours = contours[np.logical_or(hierarchy[:, _ID_PARENT] >= 0, hierarchy[:,2] >= _ID_CHILD)]
 
-            debug_contours_output = contained_contours
+            # debug_contours_output = contained_contours
+            debug_contours_output = []
 
             if contained_contours != None:
                 contained_contours = [c for c in contained_contours if len(c) >= 5]
@@ -120,6 +121,7 @@ def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, thres
                     a,b = e[1][0] / 2., e[1][1] / 2.
                     if abs(cv2.contourArea(c) - np.pi * a * b) < delta_area_threshold:
                         candidate_ellipses.append(e)
+                        debug_contours_output.append(c)
 
         else:
             hierarchy = hierarchy[_RETR_TREE]
@@ -129,8 +131,9 @@ def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, thres
             # keep only contours                        with parents     and      children
             contained_contours = contours[np.logical_and(hierarchy[:, _ID_PARENT] >= 0, hierarchy[:,2] >= _ID_CHILD)]
 
-            debug_contours_output = contained_contours
             #debug_contours_output = contained_contours
+            debug_contours_output = []
+            
             # need at least 5 points to fit ellipse
             contained_contours =  [c for c in contained_contours if len(c) >= 5]
 
@@ -144,6 +147,7 @@ def ellipses_from_findContours(img, cv2_thresh_mode, delta_area_threshold, thres
                 a,b = e[1][0] / 2., e[1][1] / 2.
                 if abs(cv2.contourArea(c) - np.pi * a * b) < delta_area_threshold:
                     candidate_ellipses.append(e)
+                    debug_contours_output.append(c)
 
     return candidate_ellipses, merge, debug_contours_output
 

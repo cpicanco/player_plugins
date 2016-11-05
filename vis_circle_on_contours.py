@@ -27,6 +27,7 @@ from pyglui import ui
 
 from methods import denormalize
 
+import sys
 # pt_codes references
 _XY = 0
 _CODE = 1
@@ -51,21 +52,29 @@ class Vis_Circle_On_Contours(Plugin):
             draw circle ...
 
     """
-    def __init__(self, g_pool,radius=20,color=(0.0, 0.0, 1.0, 0.8),thickness=2,fill=True, epsilon = 0.007, delta_area_threshold=20, dist_threshold=20,threshold=255, menu_conf={'pos':(300,300),'size':(300,300),'collapsed':False}):
+    def __init__(self, g_pool,
+                    radius=20,
+                    color=(0.0, 0.0, 1.0, 0.8),
+                    thickness=2,
+                    fill=True,
+                    epsilon=0.007,
+                    show_edges=True,
+                    dist_threshold=20,
+                    delta_area_threshold=20,
+                    threshold=255):
         super(Vis_Circle_On_Contours, self).__init__(g_pool)
         self.order = .8
         self.uniqueness = "unique"
 
         # initialize empty menu
-        # and load menu configuration of last session
         self.menu = None
-        self.menu_conf = menu_conf
 
         # provided color, default red
-        self.r = color[0]
-        self.g = color[1]
-        self.b = color[2]
-        self.a = color[3]
+        self.color = color
+        self.r = self.color[_CH_R]
+        self.g = self.color[_CH_G]
+        self.b = self.color[_CH_B]
+        self.a = self.color[_CH_0]
 
         # shared configs
         self.radius = radius
@@ -77,7 +86,7 @@ class Vis_Circle_On_Contours(Plugin):
         self.expected_contours = 9
         self.ellipse_size = 2.0
         self.epsilon = epsilon
-        self.show_edges = True
+        self.show_edges = show_edges
         self.dist_threshold = dist_threshold
         self.delta_area_threshold = delta_area_threshold
         self.threshold = threshold
@@ -136,10 +145,13 @@ class Vis_Circle_On_Contours(Plugin):
         # delta_area_threshold gives the maximum allowed difference
         ellipses = []
         merge = []
-        contained_contours = []
 
-        ellipses, merge, contained_contours = ellipses_from_findContours(img,cv2_thresh_mode=cv2.THRESH_BINARY,delta_area_threshold=self.delta_area_threshold,threshold=self.threshold)
+        ellipses, merge, ellipses_contours = ellipses_from_findContours(img,cv2_thresh_mode=cv2.THRESH_BINARY,delta_area_threshold=self.delta_area_threshold,threshold=self.threshold)
         
+        # for contour in ellipses_contours:
+        #     print contour.shape
+        #     break
+
         alfa = self.ellipse_size
 
         # if self.show_edges:
@@ -206,13 +218,22 @@ class Vis_Circle_On_Contours(Plugin):
                         center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
                         axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
                         angle = int( round(ellipse[2] ))
-                        cv2.ellipse(img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
+                        cv2.ellipse(frame.img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
 
             #print stm_contours
             # pt_codes is a list tuples:
             # tuple((denormalized point as a float x, y coordenate), 'string code given by the PointPolygonTextEx function')
             # ex.: tuple([x, y], '+1-2')
-            contour_count = 0
+            if self.show_edges:
+                for contour in stm_contours: # populated by ellipse2Poly
+                    # print np.array([[c] for c in contour]).shape
+                    # sys.exit("contour")
+                    # (x, y, w, h) = cv2.boundingRect(np.array([[c] for c in contour]))
+                    # cv2.rectangle(frame.img, (x, y), (x+w, y+h), (255,0,0), 2)
+
+                    box = np.int0(cv2.cv.BoxPoints(cv2.minAreaRect(np.array([[c] for c in contour]))))
+                    cv2.drawContours(frame.img,[box],0,color1,1)
+
             pt_codes = []
             for pt in pts:
                 contour_count = 0
@@ -245,7 +266,7 @@ class Vis_Circle_On_Contours(Plugin):
                     color = map(lambda x: int(x * 255),(0, 0, 0, self.a))
 
                 transparent_circle(
-                            img,
+                            frame.img,
                             pt[_XY],
                             radius = int(radius/2),
                             color = color,
@@ -264,8 +285,7 @@ class Vis_Circle_On_Contours(Plugin):
     def init_gui(self):
         # initialize the menu
         self.menu = ui.Scrolling_Menu('Gaze Circles on Contours')
-        # load the configuration of last session
-        self.menu.configuration = self.menu_conf
+
         # add menu to the window
         self.g_pool.gui.append(self.menu)
         self.menu.append(ui.Button('Close', self.unset_alive))
@@ -307,14 +327,14 @@ class Vis_Circle_On_Contours(Plugin):
 
     def get_init_dict(self):
         return {'radius':self.radius,
-                'color':(self.r, self.g, self.b, self.a),
-                'epsilon':self.epsilon,
-                'dist_threshold':self.dist_threshold,
-                'delta_area_threshold':self.delta_area_threshold,
-                'threshold':self.threshold,
+                'color':self.color,
                 'thickness':self.thickness,
                 'fill':self.fill,
-                'menu_conf':self.menu.configuration}
+                'epsilon':self.epsilon,
+                'show_edges':self.show_edges,
+                'dist_threshold':self.dist_threshold,
+                'delta_area_threshold':self.delta_area_threshold,
+                'threshold':self.threshold}
 
     def clone(self):
         return Vis_Circle_On_Contours(**self.get_init_dict())
