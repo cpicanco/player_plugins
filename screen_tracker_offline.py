@@ -52,7 +52,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
     Both caches are build up over time. The marker cache is also session persistent.
     See marker_tracker.py for more info on this marker tracker.
     """
-    def __init__(self,g_pool,mode="Show Markers and Surfaces", min_marker_perimeter = 100,robust_detection=True):
+    def __init__(self,g_pool,mode="Show Markers and Surfaces", min_marker_perimeter = 100,robust_detection=True, matrix=None):
         #self.g_pool = g_pool
         Trim_Marks_Extended_Exist = False
         for p in g_pool.plugins:
@@ -66,6 +66,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             del Trim_Marks_Extended
 
         # heatmap
+        self.matrix = matrix
         self.heatmap_blur = True
         self.heatmap_blur_gradation = 0.12
         self.heatmap_colormap = "viridis"
@@ -90,9 +91,6 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
     def init_gui(self):
         self.menu = ui.Scrolling_Menu('Offline Screen Tracker')
         self.g_pool.gui.append(self.menu)
-
-        self.add_button = ui.Thumb('add_surface',setter=self.add_surface,getter=lambda:False,label='Add Surface',hotkey='a')
-        self.g_pool.quickbar.append(self.add_button)
         self.update_gui_markers()
 
         self.on_window_resize(glfwGetCurrentContext(),*glfwGetWindowSize(glfwGetCurrentContext()))
@@ -119,28 +117,114 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             #     self.recalculate()
 
 
-    def screen_segmentation_m(self):
-        def midpoint(v1, v2):
-            return np.array([(v1[0]+v2[0])/2,(v1[1]+v2[1])/2])
+    def matrix_segmentation(self):
+        if not self.mode == 'Show Markers and Surfaces':
+            logger.error('Please, select the "Show Markers and Surfaces" option at the Mode Selector.')
+            return 
+        screen_width = 1280
+        screen_height = -768
 
+        def move_srf_to_stm(s,p):
+            """
+            ######### #########
+            # 0 . 1 # # lt.rt #
+            # .   . # # .   . #
+            # 3 . 2 # # lb.rb #
+            # uv #### #########
+
+            #########
+            # 3 . 2 #
+            # .   . #
+            # 0 . 1 #
+            # sv #### 
+            """
+            sw = 150./screen_width
+            sh = 150./screen_height
+
+            before = s.markers.values()[0].uv_coords
+            #before = np.array(((0,0),(1,0),(1,1),(0,1)),dtype=np.float32)
+            after = before.copy() 
+            after[0] = p
+            after[1] = p + np.array([sw,0])
+            after[2] = p + np.array([sw,sh])
+            after[3] = p + np.array([0,sh])
+
+            transform = cv2.getPerspectiveTransform(after,before)
+            for m in s.markers.values():
+                m.uv_coords = cv2.perspectiveTransform(m.uv_coords,transform)
+
+        n = 3
+        namei = 0
+        for i in xrange(0,n):
+            for j in xrange(0,n):
+                namei += 1
+                sname = 'S'+str(namei)
+                for s in self.surfaces:
+                    if s.name == sname:
+                        move_srf_to_stm(s, self.matrix[i][j])
+
+        for s in self.surfaces:        
+            s.invalidate()
+        
+        self.update_gui_markers()
+             
+    def add_matrix_surfaces(self):
         if not self.mode == 'Show Markers and Surfaces':
             logger.error('Please, select the "Show Markers and Surfaces" option at the Mode Selector.')
             return 
 
-        for s in self.surfaces:
-            # we need a copy of the original surface vertices as reference to the calculations
+        screen_width = 1280
+        screen_height = -768
+        def midpoint(v1, v2):
+            return np.array([(v1[0]+v2[0])/2,(v1[1]+v2[1])/2])
+
+        def get_m(s, n=3):
+            def get_coord(index,midxy, y=False):
+                if y:
+                  rws = screen_height # must flip
+                else:
+                  rws = screen_width
+
+                return ((250./rws)*index)+midxy-(((250./rws)*n)/2)+((100./rws)/2)
+            rwsx = screen_width
+            rwsy = screen_height
             lt = s.left_top
             rt = s.right_top
             lb = s.left_bottom
             rb = s.right_bottom
+            m = [[[] for _ in xrange(0,n)] for _ in xrange(0,n)]
+            for j in xrange(0,n):
+                xt = get_coord(j,midpoint(lt,rt)[0])
+                # yt = get_coord(j,midpoint(lt,rt)[1])
+                # xb = get_coord(j,midpoint(lb,rb)[0])
+                # yb = get_coord(j,midpoint(lb,rb)[1])
+                for i in xrange(0,n):
+                    yt = get_coord(i,midpoint(lt,rb)[1],True) 
+                    # yt = get_coord(i,midpoint([xt,yt],[xb,yb])[1],True) 
+                    m[i][j] = np.array([xt, yt])
+            return m
+ 
+        def create_surface(name):
+            self.surfaces.append(Offline_Reference_Surface_Extended(self.g_pool))
+            self.surfaces[-1].name = name
+            self.surfaces[-1].real_world_size['x'] = 150
+            self.surfaces[-1].real_world_size['y'] = 150
+            # self.surfaces[-1].markers = markers
 
-            s.right_top = midpoint(lt,rt)
-            s.right_bottom = midpoint(lb, rb)  
-            #s.right_bottom = midpoint(s.right_top,s.right_bottom)
-            s.left_bottom = midpoint(lt, lb)
+        n = 3
+        for s in self.surfaces:
+            if s.name == 'Screen':
+                self.matrix = get_m(s,n)
+                # markers = s.markers
+        
+        for i in xrange(0,n*n):
+            create_surface('S'+str(i+1))
 
+        for s in self.surfaces:        
             s.invalidate()
-
+        
+        self.update_gui_markers()
+                  
     def screen_segmentation(self):
         """
         no standards here, uv_coords ordering differing from the surface vertice one.
@@ -191,7 +275,9 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
 
         self.update_gui_markers()
 
-      
+    def raise_bug(self):
+        raise 's'
+
     def update_gui_markers(self):
 
         def close():
@@ -210,8 +296,9 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         if self.mode == 'Show Markers and Surfaces':
             self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
             self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
-            self.menu.append(ui.Button("Matrix segmentation", self.screen_segmentation_m))
-        
+            self.menu.append(ui.Button("Matrix segmentation", self.matrix_segmentation))
+            self.menu.append(ui.Button("Add M surfaces", self.add_matrix_surfaces))
+            self.menu.append(ui.Button("bug", self.raise_bug))
         if self.mode == 'Show Kmeans Correction':
             self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
             self.menu.append(ui.Text_Input('gaze_correction_block_size',self,label='Block Size'))
@@ -699,7 +786,8 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
                     break
 
     def get_init_dict(self):
-        return {'mode':self.mode}
+        return {'mode':self.mode,
+                'matrix':self.matrix}
 
     def on_notify(self,notification):
         if notification['subject'] == 'gaze_positions_changed':

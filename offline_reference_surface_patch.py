@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 from offline_reference_surface import Offline_Reference_Surface
-
 from colormaps import magma, inferno, plasma, viridis
 
 class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
@@ -630,15 +629,18 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         # 0 . 1 #
         # sv #### 
         """
-        if incremental:
-            before = self.markers.values()[0].uv_coords # uv
+
+        if not incremental:
+            super(Offline_Reference_Surface_Extended,self).move_vertex(vertex_index,newpos)
         else:
-            before = marker_corners_norm # sv
-        after = before.copy()
-        after[vertex_index] = newpos
-        transform = cv2.getPerspectiveTransform(after,before)
-        for m in self.markers.values():
-            m.uv_coords = cv2.perspectiveTransform(m.uv_coords,transform)
+            before = self.markers.values()[0].uv_coords
+            #before = np.array(((0,0),(1,0),(1,1),(0,1)),dtype=np.float32)
+            after = before.copy()
+            after[vertex_index] = newpos
+            transform = cv2.getPerspectiveTransform(after,before)
+            for m in self.markers.values():
+                m.uv_coords = cv2.perspectiveTransform(m.uv_coords,transform)
+
 
     @property
     def left_top(self):

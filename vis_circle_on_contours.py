@@ -61,7 +61,8 @@ class Vis_Circle_On_Contours(Plugin):
                     show_edges=True,
                     dist_threshold=20,
                     delta_area_threshold=20,
-                    threshold=255):
+                    threshold=255,
+                    ellipse_size=2.):
         super(Vis_Circle_On_Contours, self).__init__(g_pool)
         self.order = .8
         self.uniqueness = "unique"
@@ -84,7 +85,7 @@ class Vis_Circle_On_Contours(Plugin):
         # detector
         self.candraw = False
         self.expected_contours = 9
-        self.ellipse_size = 2.0
+        self.ellipse_size = ellipse_size
         self.epsilon = epsilon
         self.show_edges = show_edges
         self.dist_threshold = dist_threshold
@@ -167,7 +168,7 @@ class Vis_Circle_On_Contours(Plugin):
 
         # we need denormalized points for point polygon tests    
         pts = [denormalize(pt['norm_pos'],frame.img.shape[:-1][::-1],flip_y=True) for pt in events.get('gaze_positions',[])]
-           
+        contour_count = 0
         if ellipses:
             # get area of all ellipses
             ellipses_temp = [e[1][0]/2. * e[1][1]/2. * np.pi for e in ellipses]
@@ -224,15 +225,15 @@ class Vis_Circle_On_Contours(Plugin):
             # pt_codes is a list tuples:
             # tuple((denormalized point as a float x, y coordenate), 'string code given by the PointPolygonTextEx function')
             # ex.: tuple([x, y], '+1-2')
-            if self.show_edges:
-                for contour in stm_contours: # populated by ellipse2Poly
+            # if self.show_edges:
+            #     for contour in stm_contours: # populated by ellipse2Poly
                     # print np.array([[c] for c in contour]).shape
                     # sys.exit("contour")
                     # (x, y, w, h) = cv2.boundingRect(np.array([[c] for c in contour]))
                     # cv2.rectangle(frame.img, (x, y), (x+w, y+h), (255,0,0), 2)
 
-                    box = np.int0(cv2.cv.BoxPoints(cv2.minAreaRect(np.array([[c] for c in contour]))))
-                    cv2.drawContours(frame.img,[box],0,color1,1)
+                    # box = np.int0(cv2.cv.BoxPoints(cv2.minAreaRect(np.array([[c] for c in contour]))))
+                    # cv2.drawContours(frame.img,[box],0,color1,1)
 
             pt_codes = []
             for pt in pts:
@@ -243,9 +244,6 @@ class Vis_Circle_On_Contours(Plugin):
                 # a single code for a single point
                 pt_codes.append((pt, counter_code))
             #print pt_codes
-        else:
-            #print 'else'
-            contour_count = 0
            
         # transparent circle parameters
         radius = self.radius
@@ -334,7 +332,8 @@ class Vis_Circle_On_Contours(Plugin):
                 'show_edges':self.show_edges,
                 'dist_threshold':self.dist_threshold,
                 'delta_area_threshold':self.delta_area_threshold,
-                'threshold':self.threshold}
+                'threshold':self.threshold,
+                'ellipse_size':self.ellipse_size}
 
     def clone(self):
         return Vis_Circle_On_Contours(**self.get_init_dict())
