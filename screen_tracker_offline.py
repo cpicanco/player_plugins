@@ -118,35 +118,6 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             # if self.cacher_run.value == False:
             #     self.recalculate()
 
-# function TMatrixForm.GetMatrix(AMonitor: integer): TStmMatrix;
-# var
-#   i,j,
-#   LRowCount,LColCount,SHeight,SWidth,SYGap,SXGap,SLeft,STop: integer;
-# begin
-#   SHeight := 150;
-#   SWidth := 150;
-#   SYGap := 100;
-#   SXGap := 100;
-#   SLeft := 0;
-#   STop := 0;
-#   LRowCount := 3;
-#   LColCount := 3;
-#   SetLength(Result, LRowCount,LColCount);
-#   for i := Low(Result) to High(Result) do
-#     begin
-#       SLeft := ((SWidth+SXGap)*i)+(Screen.Monitors[AMonitor].Width div 2)
-#                   -(((SWidth+SXGap)*LColCount) div 2)+((SXGap) div 2);
-#       for j:= Low(Result[i]) to High(Result[i]) do
-#         begin
-#           STop := ((SHeight+SYGap)*j)+(Screen.Monitors[AMonitor].Height div 2)
-#                -(((SHeight+SYGap)*LRowCount) div 2)+(SYGap div 2);
-#           Result[i][j].Left := SLeft;
-#           Result[i][j].Top := STop;
-#           Result[i][j].Width := SWidth;
-#           Result[i][j].Height := SHeight;
-#         end;
-#     end;
-# end;
 
     def screen_segmentation_m(self):
         def midpoint(v1, v2):
@@ -163,13 +134,12 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
             lb = s.left_bottom
             rb = s.right_bottom
 
-            # midtop = np.array(midpoint(lt, rt))
-            # midbottom = np.array(midpoint(lb,rb))
-            s.left_top = midpoint(lt,lb) # midleft
-            s.right_top = midpoint(rt,rb) # midright 
-         
+            s.right_top = midpoint(lt,rt)
+            s.right_bottom = midpoint(lb, rb)  
+            #s.right_bottom = midpoint(s.right_top,s.right_bottom)
+            s.left_bottom = midpoint(lt, lb)
+
             s.invalidate()
-            logger.info(str(s.left_top))     
 
     def screen_segmentation(self):
         """
