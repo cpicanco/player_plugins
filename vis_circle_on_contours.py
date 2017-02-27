@@ -128,158 +128,160 @@ class Vis_Circle_On_Contours(Plugin):
         #self.ColorDictionary['+1'] = (230, 50, 230, 150)
         #self.ColorDictionary['-1'] = (0, 0, 0, 255) 
 
-    def update(self,frame,events):
-        # get image from frame       
-        img = frame.img
+    def recent_events(self,events):
+        frame = events['frame']
+        if frame is not None:
+            # get image from frame       
+            img = frame.img
 
-        # set color1    
-        color1 = map(lambda x: int(x * 255),(self.b, self.g, self.r, self.a))
+            # set color1    
+            color1 = map(lambda x: int(x * 255),(self.b, self.g, self.r, self.a))
 
-        # cv2.THRESH_BINARY
-        # cv2.THRESH_BINARY_INV
-        # cv2.THRESH_TRUNC
+            # cv2.THRESH_BINARY
+            # cv2.THRESH_BINARY_INV
+            # cv2.THRESH_TRUNC
 
-        # find raw ellipses from cv2.findContours
+            # find raw ellipses from cv2.findContours
 
-        # the less the difference between ellipse area and source contour area are,
-        # the better a fit between ellipse and source contour will be
-        # delta_area_threshold gives the maximum allowed difference
-        ellipses = []
-        merge = []
+            # the less the difference between ellipse area and source contour area are,
+            # the better a fit between ellipse and source contour will be
+            # delta_area_threshold gives the maximum allowed difference
+            ellipses = []
+            merge = []
 
-        ellipses, merge, ellipses_contours = ellipses_from_findContours(img,cv2_thresh_mode=cv2.THRESH_BINARY,delta_area_threshold=self.delta_area_threshold,threshold=self.threshold)
-        
-        # for contour in ellipses_contours:
-        #     print contour.shape
-        #     break
-
-        alfa = self.ellipse_size
-
-        # if self.show_edges:
-        #     #frame.img = cv2.merge(merge)
-        #     #cv2.drawContours(frame.img, contained_contours,-1, (0,0,255))
-        #     if ellipses:
-        #         for ellipse in ellipses:
-        #             center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
-        #             axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
-        #             angle = int( round(ellipse[2] ))
-        #             cv2.ellipse(img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
-
-
-        # we need denormalized points for point polygon tests    
-        pts = [denormalize(pt['norm_pos'],frame.img.shape[:-1][::-1],flip_y=True) for pt in events.get('gaze_positions',[])]
-        contour_count = 0
-        if ellipses:
-            # get area of all ellipses
-            ellipses_temp = [e[1][0]/2. * e[1][1]/2. * np.pi for e in ellipses]
-            ellipses_temp.sort()
-
-            # take the highest area as reference
-            area_threshold = ellipses_temp[-1]
-        
-            # filtering by proportional area
-            ellipses_temp = []
-            for e in ellipses:
-                a,b = e[1][0] / 2., e[1][1] / 2.
-                ellipse_area = np.pi * a * b
-                if (ellipse_area/area_threshold) < .10:
-                    pass  
-                else:
-                    ellipses_temp.append(e)
-
-            # cluster_hierarchy is ordenated by appearence order, from top left screen
-            # it is a list of clustered ellipses
-            cluster_hierarchy = []
-            cluster_hierarchy = get_cluster_hierarchy(
-                                    ellipses=ellipses_temp,
-                                    dist_threshold=self.dist_threshold)
-            # total_stm is expected to be the number of stimuli on screen
-            # total_stm = len(cluster_hierarchy)
-
-            # we need contours for point polygon tests, not ellipses
-            stm_contours = []
-
-            # cluster_set is the ellipse set associated with each stimulus on screen
+            ellipses, merge, ellipses_contours = ellipses_from_findContours(img,cv2_thresh_mode=cv2.THRESH_BINARY,delta_area_threshold=self.delta_area_threshold,threshold=self.threshold)
             
+            # for contour in ellipses_contours:
+            #     print(contour.shape)
+            #     break
 
-            temp = list(cluster_hierarchy)
-            for cluster_set in temp:
-                #print len(cluster_set)
-                if len(cluster_set) > 2:
-                    cluster_hierarchy.append(cluster_hierarchy.pop(cluster_hierarchy.index(cluster_set)))
+            alfa = self.ellipse_size
 
-            for cluster_set in cluster_hierarchy:
-                if len(cluster_set) > 0:
-                    # use only the smallest (first) ellipse for reference
-                    ellipse = cluster_set[0]
-                    stm_contours.append(ellipse_to_contour(ellipse, alfa))
-
-                    if self.show_edges:
-                        # for ellipse in cluster_set:
-                        center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
-                        axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
-                        angle = int( round(ellipse[2] ))
-                        cv2.ellipse(frame.img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
-
-            #print stm_contours
-            # pt_codes is a list tuples:
-            # tuple((denormalized point as a float x, y coordenate), 'string code given by the PointPolygonTextEx function')
-            # ex.: tuple([x, y], '+1-2')
             # if self.show_edges:
-            #     for contour in stm_contours: # populated by ellipse2Poly
-                    # print np.array([[c] for c in contour]).shape
-                    # sys.exit("contour")
-                    # (x, y, w, h) = cv2.boundingRect(np.array([[c] for c in contour]))
-                    # cv2.rectangle(frame.img, (x, y), (x+w, y+h), (255,0,0), 2)
+            #     #frame.img = cv2.merge(merge)
+            #     #cv2.drawContours(frame.img, contained_contours,-1, (0,0,255))
+            #     if ellipses:
+            #         for ellipse in ellipses:
+            #             center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
+            #             axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
+            #             angle = int( round(ellipse[2] ))
+            #             cv2.ellipse(img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
 
-                    # box = np.int0(cv2.cv.BoxPoints(cv2.minAreaRect(np.array([[c] for c in contour]))))
-                    # cv2.drawContours(frame.img,[box],0,color1,1)
 
-            pt_codes = []
-            for pt in pts:
-                contour_count = 0
-                counter_code = ''
-                for contour in stm_contours:
-                    contour_count, counter_code = PolygonTestRC(contour, pt, contour_count, counter_code)
-                # a single code for a single point
-                pt_codes.append((pt, counter_code))
-            #print pt_codes
-           
-        # transparent circle parameters
-        radius = self.radius
-        if self.fill:
-            thickness= -1
-        else:
-            thickness = self.thickness
+            # we need denormalized points for point polygon tests    
+            pts = [denormalize(pt['norm_pos'],frame.img.shape[:-1][::-1],flip_y=True) for pt in events.get('gaze_positions',[])]
+            contour_count = 0
+            if ellipses:
+                # get area of all ellipses
+                ellipses_temp = [e[1][0]/2. * e[1][1]/2. * np.pi for e in ellipses]
+                ellipses_temp.sort()
 
-        # each code specifies the color of each point
-        # in accordance with the self.ColorDictionary
-        if contour_count > 0:
-            for pt in pt_codes:
-                try:
-                    #print pt
-                    color = self.ColorDictionary[pt[_CODE]]
-                except KeyError, e:
-                    #print e
-                    color = map(lambda x: int(x * 255),(0, 0, 0, self.a))
+                # take the highest area as reference
+                area_threshold = ellipses_temp[-1]
+            
+                # filtering by proportional area
+                ellipses_temp = []
+                for e in ellipses:
+                    a,b = e[1][0] / 2., e[1][1] / 2.
+                    ellipse_area = np.pi * a * b
+                    if (ellipse_area/area_threshold) < .10:
+                        pass  
+                    else:
+                        ellipses_temp.append(e)
 
-                transparent_circle(
-                            frame.img,
-                            pt[_XY],
-                            radius = int(radius/2),
-                            color = color,
-                            thickness = thickness    )
-        # do not find any contour        
-        else:
-            for pt in pts:
-                transparent_circle(
-                    frame.img,
-                    pt,
-                    radius = radius,
-                    color = map(lambda x: int(x * 255),self.colors[-1]),
-                    thickness = thickness    )
-                cv2.putText(frame.img, '?', (int(pt[0] -10),int(pt[1]) +10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 1, lineType = cv2.CV_AA )
-    
+                # cluster_hierarchy is ordenated by appearence order, from top left screen
+                # it is a list of clustered ellipses
+                cluster_hierarchy = []
+                cluster_hierarchy = get_cluster_hierarchy(
+                                        ellipses=ellipses_temp,
+                                        dist_threshold=self.dist_threshold)
+                # total_stm is expected to be the number of stimuli on screen
+                # total_stm = len(cluster_hierarchy)
+
+                # we need contours for point polygon tests, not ellipses
+                stm_contours = []
+
+                # cluster_set is the ellipse set associated with each stimulus on screen
+                
+
+                temp = list(cluster_hierarchy)
+                for cluster_set in temp:
+                    #print(len(cluster_set))
+                    if len(cluster_set) > 2:
+                        cluster_hierarchy.append(cluster_hierarchy.pop(cluster_hierarchy.index(cluster_set)))
+
+                for cluster_set in cluster_hierarchy:
+                    if len(cluster_set) > 0:
+                        # use only the smallest (first) ellipse for reference
+                        ellipse = cluster_set[0]
+                        stm_contours.append(ellipse_to_contour(ellipse, alfa))
+
+                        if self.show_edges:
+                            # for ellipse in cluster_set:
+                            center = ( int(round( ellipse[0][0] )), int( round( ellipse[0][1] ))) 
+                            axes = ( int( round( ellipse[1][0]/alfa )), int( round( ellipse[1][1]/alfa )))
+                            angle = int( round(ellipse[2] ))
+                            cv2.ellipse(frame.img, center, axes, angle, startAngle=0, endAngle=359, color=color1, thickness=1, lineType=8, shift= 0)
+
+                #print(stm_contours)
+                # pt_codes is a list tuples:
+                # tuple((denormalized point as a float x, y coordenate), 'string code given by the PointPolygonTextEx function')
+                # ex.: tuple([x, y], '+1-2')
+                # if self.show_edges:
+                #     for contour in stm_contours: # populated by ellipse2Poly
+                        # print(np.array([[c] for c in contour]).shape)
+                        # sys.exit("contour")
+                        # (x, y, w, h) = cv2.boundingRect(np.array([[c] for c in contour]))
+                        # cv2.rectangle(frame.img, (x, y), (x+w, y+h), (255,0,0), 2)
+
+                        # box = np.int0(cv2.cv.BoxPoints(cv2.minAreaRect(np.array([[c] for c in contour]))))
+                        # cv2.drawContours(frame.img,[box],0,color1,1)
+
+                pt_codes = []
+                for pt in pts:
+                    contour_count = 0
+                    counter_code = ''
+                    for contour in stm_contours:
+                        contour_count, counter_code = PolygonTestRC(contour, pt, contour_count, counter_code)
+                    # a single code for a single point
+                    pt_codes.append((pt, counter_code))
+                #print(pt_codes)
+               
+            # transparent circle parameters
+            radius = self.radius
+            if self.fill:
+                thickness= -1
+            else:
+                thickness = self.thickness
+
+            # each code specifies the color of each point
+            # in accordance with the self.ColorDictionary
+            if contour_count > 0:
+                for pt in pt_codes:
+                    try:
+                        #print(pt)
+                        color = self.ColorDictionary[pt[_CODE]]
+                    except KeyError:
+                        #print(e)
+                        color = map(lambda x: int(x * 255),(0, 0, 0, self.a))
+
+                    transparent_circle(
+                                frame.img,
+                                pt[_XY],
+                                radius = int(radius/2),
+                                color = color,
+                                thickness = thickness    )
+            # do not find any contour        
+            else:
+                for pt in pts:
+                    transparent_circle(
+                        frame.img,
+                        pt,
+                        radius = radius,
+                        color = map(lambda x: int(x * 255),self.colors[-1]),
+                        thickness = thickness    )
+                    cv2.putText(frame.img, '?', (int(pt[0] -10),int(pt[1]) +10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0), 1, lineType = cv2.CV_AA )
+        
     def init_gui(self):
         # initialize the menu
         self.menu = ui.Scrolling_Menu('Gaze Circles on Contours')

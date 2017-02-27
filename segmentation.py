@@ -65,9 +65,9 @@ class Segmentation(Plugin):
 
     """
     def __init__(self, g_pool, custom_events=[], mode='chain', keep_create_order=True,
-                expected_response='NA',filter_by_expresp=True,
-                angle='NA',filter_by_angle=True,
-                distance='NA',filter_by_distance=True,
+                expected_response='NONE',filter_by_expresp=True,
+                angle='NONE',filter_by_angle=True,
+                distance='NONE',filter_by_distance=True,
                 offset=0.0,onset=0.0,
                 color='red'):
         super(Segmentation, self).__init__(g_pool)
@@ -124,7 +124,7 @@ class Segmentation(Plugin):
         self.scapp_output = None
         try:
             self.load_scapp_output()
-        except Exception, e:
+        except:
             logger.warning("scapp_output.timestamps error")
         
         self.scapp_report = None
@@ -302,7 +302,7 @@ class Segmentation(Plugin):
                     delimiter="\t", missing_values=["NA"], skip_header=6, skip_footer=1,
                     filling_values=None, names=True, deletechars='_', autostrip=True,
                     dtype=None)
-            except ValueError, e:
+            except ValueError:
                 logger.warning("genfromtxt error")
         else:
             logger.warning("File not found: "+ scapp_report_path)
@@ -364,7 +364,7 @@ class Segmentation(Plugin):
 
 
     def init_gui(self):
-        print zmq.zmq_version()
+        # print('zmq_version:',zmq.zmq_version())
         # initialize the menu
         self.menu = ui.Scrolling_Menu('Segmentation')
         # add ui elements to the menu
@@ -394,15 +394,21 @@ class Segmentation(Plugin):
 
             unique_items = sorted(set(self.scapp_report['Angle']))
             s_menu.append(ui.Switch('filter_by_angle',self,label="by Angle"))
-            s_menu.append(ui.Selector('angle',self,label='Angles',selection=[str(i) for i in unique_items] ))
+            selection = ['NONE']
+            [selection.append(str(i)) for i in unique_items] 
+            s_menu.append(ui.Selector('angle',self,label='Angles',selection=selection))
 
             unique_items = sorted(set(self.scapp_report['ExpcResp']))
+            selection = ['NONE']
+            [selection.append(str(i)) for i in unique_items] 
             s_menu.append(ui.Switch('filter_by_expresp',self,label="by Expected Response"))
-            s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=[str(i) for i in unique_items]))
+            s_menu.append(ui.Selector('expected_response',self,label='Expected Response',selection=selection))
 
             unique_items = sorted(set(zip(self.scapp_report['Angle'],self.scapp_report['X1'],self.scapp_report['Y1'])))
+            selection = ['NONE']
+            [selection.append(str(i)) for i in unique_items] 
             s_menu.append(ui.Switch('filter_by_distance',self,label="by Distance"))
-            s_menu.append(ui.Selector('distance',self,label='Distance',selection=[str(i) for i in unique_items]))
+            s_menu.append(ui.Selector('distance',self,label='Distance',selection=selection))
 
             s_menu.append(ui.Slider('onset',self,min=0.00,step=0.1,max=2.0,label='onset'))
             s_menu.append(ui.Slider('offset',self,min=0.00,step=0.1,max=2.0,label='offset'))
@@ -515,16 +521,18 @@ class Segmentation(Plugin):
                 
             # 2 seconds interval
             # frameInterval = range(firstResponse, endLimitedHold)
-            # print firstResponse, endLimitedHold
+            # print(firstResponse, endLimitedHold)
 
     def on_window_resize(self,window,w,h):
         self.window_size = w,h
         self.h_pad = self.padding * self.frame_count/float(w)
         self.v_pad = self.padding * 1./h
 
-    def update(self,frame,events):
-        if self.frame_index != frame.index:
-            self.frame_index = frame.index
+    def recent_events(self,events):
+        frame = events['frame']
+        if frame is not None:
+            if self.frame_index != frame.index:
+                self.frame_index = frame.index
 
     def gl_display(self):
         glMatrixMode(GL_PROJECTION)

@@ -16,6 +16,16 @@ from ast import literal_eval
 from glob import glob
 from fix_time_dups import has_duplicates, remove_duplicates
 
+def convert_gaze(src, dst,time_start):
+	with open(dst, 'w+') as f:
+	  f.write("\t".join(('time','x_norm','y_norm'))+'\n')
+	  for timestamp, X, Y in zip(src['gaze_timestamp'], src['x_norm'], src['y_norm']):
+		  timestamp -= time_start
+		  timestamp = '%.3f'%timestamp
+		  X = '%.3f'%round(X, 3)
+		  Y = '%.3f'%round(Y, 3)
+		  f.write("\t".join((timestamp, X, Y))+'\n')
+
 
 def convert(src, dst, fix_time_dups=False):
 	# output
@@ -47,14 +57,7 @@ def convert(src, dst, fix_time_dups=False):
 	print repr(aGazeFile['gaze_timestamp'][0])
     
 	# gaze events
-	with open(gaze_output, 'w+') as f:
-	  f.write("\t".join(('time','x_norm','y_norm'))+'\n')
-	  for timestamp, X, Y in zip(aGazeFile['gaze_timestamp'], aGazeFile['x_scaled'], aGazeFile['y_scaled']):
-		  timestamp -= time_start
-		  timestamp = '%.9f'%timestamp
-		  X = '%.3f'%round(X, 3)
-		  Y = '%.3f'%round(Y, 3)
-		  f.write("\t".join((timestamp, X, Y))+'\n')
+	convert_gaze(aGazeFile,gaze_output,time_start)
 
 	# behavioral events
 
@@ -145,3 +148,12 @@ def convert(src, dst, fix_time_dups=False):
 		  X = '%.3f'%round(X, 3)
 		  Y = '%.3f'%round(Y, 3)
 		  f.write("\t".join((str(fid),timestamp, duration, X, Y))+'\n')
+
+if __name__ == '__main__':
+	gaze_input ='/home/rafael/doutorado/data_doc/003-Natan/2015-05-13/exports/0-11710/surfaces/gaze_positions_on_surface_Screen_1455571281.87.csv'
+	gaze_input = np.genfromtxt(gaze_input, delimiter="\t",missing_values=["NA"],
+		  filling_values=None,names=True, autostrip=True, dtype=None)
+
+	gaze_output = '/home/rafael/git/abpmc-2016/P000/000/gaze_coordenates_on_screen.txt'
+	time_start = gaze_input['gaze_timestamp'][0]
+	convert_gaze(gaze_input, gaze_output, time_start)

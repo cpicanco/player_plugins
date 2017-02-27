@@ -34,7 +34,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
 
     """
     def __init__(self,g_pool,name="unnamed",saved_definition=None):
-        super(Offline_Reference_Surface_Extended, self).__init__(g_pool,name,saved_definition)
+        super().__init__(g_pool,name,saved_definition)
         self.g_pool = g_pool
         self.cache = None
         self.gaze_on_srf = [] # points on surface for realtime feedback display
@@ -184,7 +184,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
             try:
                 for data in self.output_data['unbiased_gaze']:
                     all_gaze.append(normalize(data['gaze'],(x_size, y_size),flip_y=True)) 
-            except KeyError, e:
+            except KeyError:
                 logger.warning("No unbiased_gaze data was found.",e)
 
         def add_gaze_on_srf_by_frame(sec):
@@ -233,7 +233,7 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
                                                 # range = [[0, x_size], [0, y_size]],
                                                 normed = False,
                                                 weights = None)
-        except (ValueError) as e:
+        except ValueError as e:
             logger.error("Error:%s" %(e))
             return
 
