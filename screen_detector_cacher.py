@@ -52,29 +52,29 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
                     next_unvisited = None
         return next_unvisited
 
-    def handle_frame(next):
-        if next != cap.get_frame_index():
+    def handle_frame(next_frame):
+        if next_frame != cap.get_frame_index():
             #we need to seek:
-            #logger.debug("Seeking to Frame %s" %next)
+            #logger.debug("Seeking to Frame %s" %next_frame)
             try:
-                cap.seek_to_frame(next)
+                cap.seek_to_frame(next_frame)
             except FileSeekError:
                 #could not seek to requested position
-                #logger.warning("Could not evaluate frame: %s."%next)
-                visited_list[next] = True # this frame is now visited.
-                q.put((next,[])) # we cannot look at the frame, report no detection
+                #logger.warning("Could not evaluate frame: %s."%next_frame)
+                visited_list[next_frame] = True # this frame is now visited.
+                q.put((next_frame,[])) # we cannot look at the frame, report no detection
                 return
             #seeking invalidates prev markers for the detector
             markers[:] = []
 
         try:
-            frame = cap.get_frame_nowait()
+            frame = cap.get_frame()
         except EndofVideoFileError:
             #logger.debug("Video File's last frame(s) not accesible")
              #could not read frame
             #logger.warning("Could not evaluate frame: %s."%next)
-            visited_list[next] = True # this frame is now visited.
-            q.put((next,[])) # we cannot look at the frame, report no detection
+            visited_list[next_frame] = True # this frame is now visited.
+            q.put((next_frame,[])) # we cannot look at the frame, report no detection
             return
 
         markers[:] = detect_screens(frame.gray)
@@ -83,20 +83,20 @@ def fill_cache(visited_list,video_file_path,timestamps,q,seek_idx,run,min_marker
         q.put((frame.index,markers[:])) #object passed will only be pickeled when collected from other process! need to make a copy ot avoid overwrite!!!
 
     while run.value:
-        next = cap.get_frame_index()
+        next_frame = cap.get_frame_index()
         if seek_idx.value != -1:
-            next = seek_idx.value
+            next_frame = seek_idx.value
             seek_idx.value = -1
             #logger.debug("User required seek. Marker caching at Frame: %s"%next)
 
 
         #check the visited list
-        next = next_unvisited_idx(next)
-        if next == None:
+        next_frame = next_unvisited_idx(next_frame)
+        if next_frame is None:
             #we are done here:
             break
         else:
-            handle_frame(next)
+            handle_frame(next_frame)
 
 
     #logger.debug("Closing Cacher Process")

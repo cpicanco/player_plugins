@@ -43,7 +43,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # first will look into Offline_Surface_Tracker namespaces then Screen_Tracker and so on
-class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
+
+class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
     """
     Special version of screen tracker for use with videofile source.
     It uses a seperate process to search all frames in the world.avi file for markers.
@@ -52,21 +53,18 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
     Both caches are build up over time. The marker cache is also session persistent.
     See marker_tracker.py for more info on this marker tracker.
     """
-    def __init__(self,g_pool,mode="Show Markers and Surfaces", min_marker_perimeter = 100,robust_detection=True, matrix=None):
-        #self.g_pool = g_pool
-        Trim_Marks_Extended_Exist = False
-        for p in g_pool.plugins:
-            if p.class_name == 'Trim_Marks_Extended':
-                Trim_Marks_Extended_Exist = True
-                break
-
-        if not Trim_Marks_Extended_Exist:
-            from trim_marks_patch import Trim_Marks_Extended
-            g_pool.plugins.add(Trim_Marks_Extended)
-            del Trim_Marks_Extended
-
+    def __init__(self,*args, **kwargs):
         # heatmap
-        self.matrix = matrix
+        # self.min_marker_perimeter = 100
+        # self.robust_detection = True
+        self.mode = "Show Markers and Surfaces"
+        self.matrix = None
+        for name, value in kwargs.items():
+            if name == 'matrix':
+                self.matrix = value
+            if name == 'mode':
+                self.mode = value
+
         self.heatmap_blur = True
         self.heatmap_blur_gradation = 0.12
         self.heatmap_colormap = "viridis"
@@ -74,7 +72,19 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         self.gaze_correction_min_confidence = 0.98
         self.gaze_correction_k = 2
         self.heatmap_use_kdata = False
-        super(Offline_Screen_Tracker, self).__init__(g_pool,mode,min_marker_perimeter,robust_detection)
+        super().__init__(*args,self.mode,100,False,True,)
+        
+        Trim_Marks_Extended_Exist = False
+        for p in self.g_pool.plugins:
+            if p.class_name == 'Trim_Marks_Extended':
+                Trim_Marks_Extended_Exist = True
+                break
+
+        if not Trim_Marks_Extended_Exist:
+            from trim_marks_patch import Trim_Marks_Extended
+            self.g_pool.plugins.add(Trim_Marks_Extended)
+            del Trim_Marks_Extended
+            
 
     def load_surface_definitions_from_file(self):
         self.surface_definitions = Persistent_Dict(os.path.join(self.g_pool.rec_dir,'surface_definitions'))
@@ -368,7 +378,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         self.update_gui_markers()
 
     # def update(self,frame,events):
-    #     super(Offline_Screen_Tracker, self).update(frame, events)
+    #     super().update(frame, events)
     #     # locate surfaces
     #     for s in self.surfaces:
     #         if not s.locate_from_cache(frame.index):
@@ -381,7 +391,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         pass
 
     # def recalculate(self):
-    #     #super(Offline_Screen_Tracker, self).recalculate()
+    #     #super().recalculate()
     #     # calc heatmaps
     #     in_mark = self.g_pool.trim_marks.in_mark
     #     out_mark = self.g_pool.trim_marks.out_mark
@@ -467,7 +477,7 @@ class Offline_Screen_Tracker(Offline_Surface_Tracker,Screen_Tracker):
         """
         Display marker and surface info inside world screen
         """
-        super(Offline_Screen_Tracker, self).gl_display()
+        super().gl_display()
 
         if self.mode == "Show Gaze Cloud":
             for s in self.surfaces:

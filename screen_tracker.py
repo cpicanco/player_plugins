@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 '''
   Pupil Player Third Party Plugins by cpicanco
-  Copyright (C) 2016 Rafael Picanço.
+  Copyright (C) 2016-2017 Rafael Picanço.
 
   The present file is distributed under the terms of the GNU General Public License (GPL v3.0).
 
@@ -29,9 +29,9 @@ from reference_surface import Reference_Surface
 class Screen_Tracker(Surface_Tracker):
     """docstring
     """
-    def __init__(self,g_pool,mode="Show markers and frames",min_marker_perimeter = 40,robust_detection=True):
-        super(Screen_Tracker, self).__init__(g_pool,mode,min_marker_perimeter,robust_detection)
-        for p in g_pool.plugins:
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for p in self.g_pool.plugins:
             if p.class_name == 'Marker_Detector':
                 p.alive = False
                 break
@@ -44,10 +44,10 @@ class Screen_Tracker(Surface_Tracker):
         self.menu = ui.Growing_Menu('Screen Tracker')
         self.g_pool.sidebar.append(self.menu)
 
-        self.button = ui.Thumb('running',self,label='Track',hotkey='t')
+        self.button = ui.Thumb('running',self,label='T',hotkey='t')
         self.button.on_color[:] = (.1,.2,1.,.8)
         self.g_pool.quickbar.append(self.button)
-        self.add_button = ui.Thumb('add_surface',setter=self.add_surface,getter=lambda:False,label='Add surface',hotkey='a')
+        self.add_button = ui.Thumb('add_surface',setter=self.add_surface,getter=lambda:False,label='A',hotkey='a')
         self.g_pool.quickbar.append(self.add_button)
         self.update_gui_markers()
 
@@ -80,49 +80,58 @@ class Screen_Tracker(Surface_Tracker):
             s_menu.append(ui.Button('remove',remove_s))
             self.menu.append(s_menu)
 
-    def update(self,frame,events):
-        self.img_shape = frame.height,frame.width,3
+    def recent_events(self,events):
+        if 'frame' in events:
+            frame = events['frame']
+            self.img_shape = frame.height,frame.width,3
 
-        if self.running:
-            gray = frame.gray
+            if self.running:
+                gray = frame.gray
 
-            # hack "self.markers" instead "self.screens" is keeped for inheritence compatibility
-            self.markers = detect_screens(gray)
+                # hack "self.markers" instead "self.screens" is keeped for inheritence compatibility
+                self.markers = detect_screens(gray)
 
-            if self.mode == "Show marker IDs":
-                draw_markers(frame.img,self.markers)
+                if self.mode == "Show marker IDs":
+                    draw_markers(frame.img,self.markers)
+                    events['frame'] = frame
 
-        events['surfaces'] = []
+            # locate surfaces, map gaze
+            for s in self.surfaces:
+                s.locate(self.markers,self.camera_calibration,self.min_marker_perimeter,self.min_id_confidence, self.locate_3d)
+                if s.detected:
+                    s.gaze_on_srf = s.map_data_to_surface(events.get('gaze_positions',[]),s.m_from_screen)
+                else:
+                    s.gaze_on_srf =[]
 
-        # locate surfaces
-        for s in self.surfaces:
-            s.locate(self.markers,self.camera_calibration,self.min_marker_perimeter, self.locate_3d)
-            if s.detected:
-                events['surfaces'].append({'name':s.name,'uid':s.uid,'m_to_screen':s.m_to_screen,'m_from_screen':s.m_from_screen, 'timestamp':frame.timestamp})
+            events['surface'] = []
+            for s in self.surfaces:
+                if s.detected:
+                    events['surface'].append({
+                        'name':s.name,
+                        'uid':s.uid,
+                        'm_to_screen':s.m_to_screen.tolist(),
+                        'm_from_screen':s.m_from_screen.tolist(),
+                        'gaze_on_srf': s.gaze_on_srf,
+                        'timestamp':frame.timestamp,
+                        'camera_pose_3d':s.camera_pose_3d.tolist() if s.camera_pose_3d is not None else None
+                    })
 
-        if self.running:
-            self.button.status_text = '%s/%s'%(len([s for s in self.surfaces if s.detected]),len(self.surfaces))
-        else:
-            self.button.status_text = 'tracking paused'
+            if self.running:
+                self.button.status_text = '{}/{}'.format(len([s for s in self.surfaces if s.detected]), len(self.surfaces))
+            else:
+                self.button.status_text = 'tracking paused'
 
-        if self.mode == 'Show Markers and Surfaces':
-            # edit surfaces by user
-            if self.edit_surf_verts:
-                window = glfwGetCurrentContext()
-                pos = glfwGetCursorPos(window)
-                pos = normalize(pos,glfwGetWindowSize(window),flip_y=True)
-                for s,v_idx in self.edit_surf_verts:
-                    if s.detected:
-                        new_pos = s.img_to_ref_surface(np.array(pos))
-                        s.move_vertex(v_idx,new_pos)
+            if self.mode == 'Show Markers and Surfaces':
+                # edit surfaces by user
+                if self.edit_surf_verts:
+                    window = glfwGetCurrentContext()
+                    pos = glfwGetCursorPos(window)
+                    pos = normalize(pos,glfwGetWindowSize(window),flip_y=True)
+                    for s,v_idx in self.edit_surf_verts:
+                        if s.detected:
+                            new_pos = s.img_to_ref_surface(np.array(pos))
+                            s.move_vertex(v_idx,new_pos)
 
-        #map recent gaze onto detected surfaces used for pupil server
-        for s in self.surfaces:
-            if s.detected:
-                s.gaze_on_srf = []
-                for p in events.get('gaze_positions',[]):
-                    gp_on_s = tuple(s.img_to_ref_surface(np.array(p['norm_pos'])))
-                    p['realtime gaze on ' + s.name] = gp_on_s
-                    s.gaze_on_srf.append(gp_on_s)
+logging.disable(logging.WARNING)
 
 del Surface_Tracker
