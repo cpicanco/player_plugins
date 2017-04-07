@@ -11,6 +11,13 @@
 # modified version of offline_marker_detector
 
 import os, platform
+import sys
+from pathlib import Path
+
+base_dir = Path(__file__).parents[2]
+print(base_dir)
+sys.path.append(os.path.join(base_dir,'pupil_plugins_shared'))
+
 import cv2
 import numpy as np
 import csv
