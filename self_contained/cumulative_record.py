@@ -20,10 +20,10 @@ def load_data_from_path(path):
     timestamps2_path = os.path.join(path, "scapp_output.npy")
 
     if not os.path.isfile(timestamps1_path):
-        raise IOError, "Source 1 were not found."
+        raise IOError, "Source 1 was not found."
 
     if not os.path.isfile(timestamps2_path):
-        raise IOError, "Source 2 were not found."
+        raise IOError, "Source 2 was not found."
 
     print "responses:",timestamps1_path
     print "stimuli__:",timestamps2_path
