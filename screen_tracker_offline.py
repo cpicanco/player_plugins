@@ -12,36 +12,39 @@
 
 import os, platform
 import sys
+
+# from memory_profiler import profile
+
 from pathlib import Path
 
 base_dir = Path(__file__).parents[2]
 print(base_dir)
-sys.path.append(os.path.join(base_dir,'pupil_plugins_shared'))
+sys.path.append(os.path.join(str(base_dir),'pupil_plugins_shared'))
 
+import sys, os
+import platform
 import cv2
 import numpy as np
 import csv
+import multiprocessing as mp
 
-if platform.system() == 'Darwin':
-    from billiard import Process,Queue,forking_enable
-    from billiard.sharedctypes import Value
-else:
-    from multiprocessing import Process, Queue
-    forking_enable = lambda x: x #dummy fn
-    from multiprocessing.sharedctypes import Value
 from ctypes import c_bool
 
-from OpenGL.GL import *
-from methods import normalize #,denormalize
-from glfw import glfwGetCurrentContext,glfwGetWindowSize,glfwGetCursorPos
 
+from itertools import chain
+from OpenGL.GL import *
+from methods import normalize, denormalize
+from file_methods import Persistent_Dict, save_object
+from cache_list import Cache_List
+from glfw import *
 from pyglui import ui
 from pyglui.cygl.utils import *
-
-from file_methods import Persistent_Dict
-from screen_tracker import Screen_Tracker
-from offline_surface_tracker import Offline_Surface_Tracker
+from math import sqrt
 from square_marker_detect import draw_markers,m_marker_to_screen
+from calibration_routines.camera_intrinsics_estimation import load_camera_calibration
+
+from offline_surface_tracker import Offline_Surface_Tracker
+from screen_tracker import Screen_Tracker
 from offline_reference_surface_patch import Offline_Reference_Surface_Extended
 
 #logging
@@ -112,16 +115,16 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
 
         self.on_window_resize(glfwGetCurrentContext(),*glfwGetWindowSize(glfwGetCurrentContext()))
 
+    # @profile    
     def init_marker_cacher(self):
-        forking_enable(0) #for MacOs only
         from screen_detector_cacher import fill_cache
         visited_list = [False if x == False else True for x in self.cache]
         video_file_path =  self.g_pool.capture.source_path
         timestamps = self.g_pool.capture.timestamps
-        self.cache_queue = Queue()
-        self.cacher_seek_idx = Value('i',0)
-        self.cacher_run = Value(c_bool,True)
-        self.cacher = Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter_cacher))
+        self.cache_queue = mp.Queue()
+        self.cacher_seek_idx = mp.Value('i',0)
+        self.cacher_run = mp.Value(c_bool,True)
+        self.cacher = mp.Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter_cacher))
         self.cacher.start()
 
     def update_marker_cache(self):
@@ -132,7 +135,6 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
                 s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,min_id_confidence=self.min_id_confidence,idx=idx)
             # if self.cacher_run.value == False:
             #     self.recalculate()
-
 
     def matrix_segmentation(self):
         if not self.mode == 'Show Markers and Surfaces':
