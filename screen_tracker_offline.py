@@ -118,24 +118,105 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
 
     # @profile    
     def init_marker_cacher(self):
-        from screen_detector_cacher import fill_cache
-        visited_list = [False if x == False else True for x in self.cache]
-        video_file_path =  self.g_pool.capture.source_path
-        timestamps = self.g_pool.capture.timestamps
-        self.cache_queue = mp.Queue()
-        self.cacher_seek_idx = mp.Value('i',0)
-        self.cacher_run = mp.Value(c_bool,True)
-        self.cacher = mp.Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter_cacher))
-        self.cacher.start()
+        pass
+        # from screen_detector_cacher import fill_cache
+        # visited_list = [False if x == False else True for x in self.cache]
+        # video_file_path =  self.g_pool.capture.source_path
+        # timestamps = self.g_pool.capture.timestamps
+        # self.cache_queue = mp.Queue()
+        # self.cacher_seek_idx = mp.Value('i',0)
+        # self.cacher_run = mp.Value(c_bool,True)
+        # self.cacher = mp.Process(target=fill_cache, args=(visited_list,video_file_path,timestamps,self.cache_queue,self.cacher_seek_idx,self.cacher_run,self.min_marker_perimeter_cacher))
+        # self.cacher.start()
 
     def update_marker_cache(self):
-        while not self.cache_queue.empty():
-            idx,c_m = self.cache_queue.get()
-            self.cache.update(idx,c_m)
+        pass
+        # while not self.cache_queue.empty():
+        #     idx,c_m = self.cache_queue.get()
+        #     self.cache.update(idx,c_m)
+        #     for s in self.surfaces:
+        #         s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,min_id_confidence=self.min_id_confidence,idx=idx)
+        #     # if self.cacher_run.value == False:
+        #     #     self.recalculate()
+
+    def close_marker_cacher(self):
+        pass
+
+    def seek_marker_cacher(self,idx):
+        pass
+        
+    def update_cache_hack(self):
+        from screen_detector_cacher import Global_Container
+        from video_capture import File_Source, EndofVideoFileError, FileSeekError
+        from screen_detector_methods import detect_screens
+        
+        def put_in_cache(frame_idx,detected_screen):
+            print(frame_idx)
+            visited_list[frame_idx] = True
+            self.cache.update(frame_idx,detected_screen)
             for s in self.surfaces:
-                s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,min_id_confidence=self.min_id_confidence,idx=idx)
-            # if self.cacher_run.value == False:
-            #     self.recalculate()
+                s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,min_id_confidence=self.min_id_confidence,idx=frame_idx)
+            
+        def next_unvisited_idx(frame_idx):
+            try:
+                visited = visited_list[frame_idx]
+            except IndexError:
+                visited = True # trigger search
+
+            if not visited:
+                next_unvisited = frame_idx
+            else:
+                # find next unvisited site in the future
+                try:
+                    next_unvisited = visited_list.index(False,frame_idx)
+                except ValueError:
+                    # any thing in the past?
+                    try:
+                        next_unvisited = visited_list.index(False,0,frame_idx)
+                    except ValueError:
+                        #no unvisited sites left. Done!
+                        #logger.debug("Caching completed.")
+                        next_unvisited = None
+            return next_unvisited
+
+        def handle_frame(next_frame):
+            if next_frame != cap.get_frame_index():
+                #we need to seek:
+                #logger.debug("Seeking to Frame %s" %next_frame)
+                try:
+                    cap.seek_to_frame(next_frame)
+                except FileSeekError:
+                    put_in_cache((next_frame,[])) # we cannot look at the frame, report no detection
+                    return
+                #seeking invalidates prev markers for the detector
+                markers[:] = []
+            
+            try:
+                frame = cap.get_frame()
+            except EndofVideoFileError:
+                put_in_cache((next_frame,[])) # we cannot look at the frame, report no detection
+                return
+
+            put_in_cache(frame.index,detect_screens(frame.gray))
+
+        self.cacher_seek_idx = 0
+        visited_list = [False if x == False else True for x in self.cache]
+        markers = []
+        cap = File_Source(Global_Container(),self.g_pool.capture.source_path,timestamps=self.g_pool.capture.timestamps)
+
+        while True:
+            next_frame = cap.get_frame_index()
+            if self.cacher_seek_idx != -1:
+                next_frame = self.cacher_seek_idx
+                self.cacher_seek_idx = -1
+
+            #check the visited list
+            next_frame = next_unvisited_idx(next_frame)
+            if next_frame is None:
+                #we are done here:
+                break
+            else:
+                handle_frame(next_frame)
 
     def matrix_segmentation(self):
         if not self.mode == 'Show Markers and Surfaces':
@@ -318,7 +399,7 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
             self.menu.append(ui.Button("Matrix segmentation", self.matrix_segmentation))
             self.menu.append(ui.Button("Add M surfaces", self.add_matrix_surfaces))
-            self.menu.append(ui.Button("bug", self.raise_bug))
+            self.menu.append(ui.Button("Update Cache", self.update_cache_hack))
         if self.mode == 'Show Kmeans Correction':
             self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
             self.menu.append(ui.Text_Input('gaze_correction_block_size',self,label='Block Size'))
