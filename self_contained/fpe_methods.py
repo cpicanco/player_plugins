@@ -90,12 +90,7 @@ def window(seq, n=2):
 def get_perfomance(data):
     return [line.decode("utf-8") for line in data['__Result']]
 
-if __name__ == '__main__':
-    paths = [
-        "/home/pupil/recordings/2017_04_12/000_ATL/000/stimulus_control/000.data",
-        "/home/pupil/recordings/2017_04_12/000_ATL/001/stimulus_control/000.data",
-    ]
-
+def main(paths):
     overall_performance = []
     count = 0
     for path in paths:
@@ -111,11 +106,46 @@ if __name__ == '__main__':
 
 
     # consecutive hits
-    size = 8
+    size = 12
     count = 0
     for performance_chunk in window(overall_performance,size):
         count += 1
         if performance_chunk.count('HIT') == size:
-            break
+            print('The participant reached %s consecutive hits in trial %s.'%(size,count+size-1),'\n')
+            return
 
-    print('The participant reached %s consecutive hits in trial %s.'%(size,count+size-1))
+    print('The participant do not reached %s consecutive hits in %s trials.'%(size,count+size-1),'\n')
+    
+
+
+
+if __name__ == '__main__':
+    
+    paths = [
+        "/home/pupil/recordings/DATA/2017_02_06/000_ELD/000/stimulus_control/000.data"
+    ]
+    main(paths)
+
+    paths = [
+        "/home/pupil/recordings/DATA/2017_04_12/000_ATL/000/stimulus_control/000.data",
+        "/home/pupil/recordings/DATA/2017_04_12/000_ATL/001/stimulus_control/000.data"
+    ]
+    main(paths)
+
+    paths = [
+        "/home/pupil/recordings/DATA/2017_04_29/000_DEM/000/stimulus_control/000.data",
+        "/home/pupil/recordings/DATA/2017_04_29/000_DEM/001/stimulus_control/000.data",
+        "/home/pupil/recordings/DATA/2017_04_29/000_DEM/002/stimulus_control/000.data"
+    ]
+    main(paths)
+
+    paths = [
+        "/home/pupil/recordings/DATA/2017_04_29/000_JES/000/stimulus_control/000.data",
+        "/home/pupil/recordings/DATA/2017_04_29/000_JES/001/stimulus_control/000.data"
+    ]
+    main(paths)
+
+    paths = [
+        "/home/pupil/recordings/DATA/2017_04_29/000_JUL/000/stimulus_control/000.data"
+    ]
+    main(paths)
