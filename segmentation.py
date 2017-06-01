@@ -44,7 +44,7 @@ class TrialContainer(object):
 class Segmentation(Plugin):
     """
     The user can manually create events by pressing
-    keyboard keys.
+    keyboard keys (v).
 
     This plugin will display vertical bars at the bottom seek bar
     based on those events.
@@ -95,7 +95,7 @@ class Segmentation(Plugin):
         # self.timestamps = g_pool.timestamps
 
         # display layout
-        self.padding = 20. #in screen pixel
+        self.padding = 30. #in screen pixel
 
         # initialize empty menu and local variables
         self.menu = None
