@@ -41,18 +41,27 @@ class Export_Images(Plugin):
                 self.alive = False
                 return
 
+        self.target_surface_name = 'None'
         self.menu = None
         self.frame = None
-        self.screen_detector = None
+        self.surface_tracker = None
         for p in self.g_pool.plugins:
-            if p.class_name == 'Offline_Screen_Detector':
+            if p.class_name == 'Screen_Tracker_Offline':
                 if p.alive:
-                    self.screen_detector = p
+                    self.surface_tracker = p
+                    break
+
+            elif p.class_name == 'Offline_Surface_Tracker':
+                if p.alive:
+                    self.surface_tracker = p
                     break
         
-        if not self.screen_detector:
+        if not self.surface_tracker:
             self.alive = False
-            logger.error('Open the Offline Screen Detector.')
+            logger.error('Open the Offline Screen Tracker or the Offline Surface Tracker.')
+        else:
+            if self.surface_tracker.surfaces:
+                self.surface_names = [s.name for s in self.surface_tracker.surfaces]
 
     def init_gui(self):
         """
@@ -63,11 +72,12 @@ class Export_Images(Plugin):
         self.menu.elements[:] = []
         self.menu.append(ui.Button('Close',self.unset_alive))
         self.menu.append(ui.Info_Text('Export surface image in current frame as a .png file.\
-                                       Surface perspective is transformed from trapezoid to rectangular.'))
+                                       Surface perspective is transformed from trapezoid to rectangular. Close and open this plugin to update the target surface list.'))
         self.menu.append(ui.Button("Export Surfaces",self.export_selected_surface))
         self.menu.append(ui.Info_Text('Export current frame image.'))
         self.menu.append(ui.Button("Export Frame",self.export_current_frame))
-
+        self.menu.append(ui.Selector('target_surface_name',self,label='Target Surface',selection=['None']+self.surface_names))
+            
     def deinit_gui(self):
         if self.menu:
             self.g_pool.gui.remove(self.menu)
@@ -91,29 +101,31 @@ class Export_Images(Plugin):
         prototype note: surface selection functionality is not implemented
         """
         # lets save out the current surface image found in video
-        if self.screen_detector.surfaces:
-            s = self.screen_detector.surfaces[0]
+        if self.surface_tracker.surfaces:
+                for target_surface in self.surface_tracker.surfaces:
+                    if target_surface.name == self.target_surface_name:
+                        s = target_surface
         else:
             logger.error('No surfaces were found.')
             return
 
         frame = self.frame.copy()
         if s.detected and frame.img is not None:
-            #here we get the verts of the surface quad in norm_coords
+            # here we get the verts of the surface quad in norm_coords
             mapped_space_one = np.array(((0,0),(1,0),(1,1),(0,1)),dtype=np.float32).reshape(-1,1,2)
             screen_space = cv2.perspectiveTransform(mapped_space_one,s.m_to_screen).reshape(-1,2)
             
-            #now we convert to image pixel coords
+            # now we convert to image pixel coords
             screen_space[:,1] = 1-screen_space[:,1]
             screen_space[:,1] *= frame.img.shape[0]
             screen_space[:,0] *= frame.img.shape[1]
             s_0,s_1 = s.real_world_size['x'], s.real_world_size['y'] 
             
-            #now we need to flip vertically again by setting the mapped_space verts accordingly.
+            # now we need to flip vertically again by setting the mapped_space verts accordingly.
             mapped_space_scaled = np.array(((0,s_1),(s_0,s_1),(s_0,0),(0,0)),dtype=np.float32)
             M = cv2.getPerspectiveTransform(screen_space,mapped_space_scaled)
             
-            #here we do the actual perspactive transform of the image.
+            # here we do the actual perspactive transform of the image.
             srf_in_video = cv2.warpPerspective(frame.img,M, (int(s.real_world_size['x']),int(s.real_world_size['y'])) )
             file_name = os.path.join(self.image_dir,'frame_'+str(frame.index)+'_surface'+'_'+s.name.replace('/','')+'_'+s.uid+'.png')
             cv2.imwrite(file_name,srf_in_video)
