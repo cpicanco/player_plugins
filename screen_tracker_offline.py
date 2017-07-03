@@ -170,33 +170,27 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
                 try:
                     cap.seek_to_frame(next_frame)
                 except FileSeekError:
-                    put_in_cache((next_frame,[])) # we cannot look at the frame, report no detection
+                    put_in_cache(next_frame,[]) # we cannot look at the frame, report no detection
                     return
                 #seeking invalidates prev markers for the detector
-                markers[:] = []
+                # markers[:] = []
             
             try:
                 frame = cap.get_frame()
             except EndofVideoFileError:
-                put_in_cache((next_frame,[])) # we cannot look at the frame, report no detection
+                put_in_cache(next_frame,[]) # we cannot look at the frame, report no detection
                 return
 
             put_in_cache(frame.index,detect_screens(frame.gray))
 
         self.cacher_seek_idx = 0
-        visited_list = [False if x == False else True for x in self.cache]
-        markers = []
+        visited_list = [False for x in self.cache]
+        # markers = []
         cap = File_Source(Global_Container(),self.g_pool.capture.source_path,timestamps=self.g_pool.capture.timestamps)
 
-        while True:
+        for _ in self.cache:
             next_frame = cap.get_frame_index()
-            if self.cacher_seek_idx != -1:
-                next_frame = self.cacher_seek_idx
-                self.cacher_seek_idx = -1
-
-            #check the visited list
-            next_frame = next_unvisited_idx(next_frame)
-            if next_frame is None:
+            if next_frame is None or next_frame >=len(self.cache):
                 #we are done here:
                 break
             else:
@@ -816,42 +810,42 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             self.recalculate()
             self.save_surface_statsics_to_file(slice(in_mark,out_mark), metrics_dir)
 
-            surface_dir = os.path.join(metrics_dir,'surfaces')
+            # surface_dir = os.path.join(metrics_dir,'surfaces')
 
-            for s in self.surfaces:
-                surface_name = '_'+s.name.replace('/','')+'_'+s.uid
-                if s.heatmap is not None:
-                    logger.info("Saved Heatmap as .png file.")
-                    cv2.imwrite(os.path.join(surface_dir,'heatmap'+surface_name+'.png'),s.heatmap)
+            # for s in self.surfaces:
+            #     surface_name = '_'+s.name.replace('/','')+'_'+s.uid
+            #     if s.heatmap is not None:
+            #         logger.info("Saved Heatmap as .png file.")
+            #         cv2.imwrite(os.path.join(surface_dir,'heatmap'+surface_name+'.png'),s.heatmap)
 
-                if s.gaze_cloud is not None:
-                    logger.info("Saved Gaze Cloud as .png file.")
-                    cv2.imwrite(os.path.join(surface_dir,'gaze_cloud'+surface_name+'.png'),s.gaze_cloud)
+            #     if s.gaze_cloud is not None:
+            #         logger.info("Saved Gaze Cloud as .png file.")
+            #         cv2.imwrite(os.path.join(surface_dir,'gaze_cloud'+surface_name+'.png'),s.gaze_cloud)
 
-                if s.gaze_correction is not None:
-                    logger.info("Saved Gaze Correction as .png file.")
-                    cv2.imwrite(os.path.join(surface_dir,'gaze_correction'+surface_name+'.png'),s.gaze_correction)
+            #     if s.gaze_correction is not None:
+            #         logger.info("Saved Gaze Correction as .png file.")
+            #         cv2.imwrite(os.path.join(surface_dir,'gaze_correction'+surface_name+'.png'),s.gaze_correction)
 
-                surface_path = os.path.join(surface_dir,'surface'+surface_name+'.png')
+            #     surface_path = os.path.join(surface_dir,'surface'+surface_name+'.png')
 
-                # export a surface image from the center of the section for visualization purposes only
-                self.export_section_image(surface_dir, s, in_mark, out_mark, surface_path)
+            #     # export a surface image from the center of the section for visualization purposes only
+            #     # self.export_section_image(surface_dir, s, in_mark, out_mark, surface_path)
 
-                # lets create alternative versions of the surfaces *.pngs
-                src1 = cv2.imread(surface_path)
-                for g in s.output_data['gaze']:
-                    cv2.circle(src1, (int(g[0]),int(g[1])), 3, (0, 0, 0), 0)
+            #     # lets create alternative versions of the surfaces *.pngs
+            #     src1 = cv2.imread(surface_path)
+            #     for g in s.output_data['gaze']:
+            #         cv2.circle(src1, (int(g[0]),int(g[1])), 3, (0, 0, 0), 0)
 
-                for c in s.output_data['kmeans']:
-                    cv2.circle(src1, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
-                cv2.imwrite(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.png'),src1)
+            #     for c in s.output_data['kmeans']:
+            #         cv2.circle(src1, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
+            #     cv2.imwrite(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.png'),src1)
 
-                np.savetxt(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.txt'), s.output_data['gaze'])
-                #src2 = cv2.imread(os.path.join(surface_dir,'heatmap'+surface_name+'.png'))
-                #dst = cv2.addWeighted(src1, .9, src2, .1, 0.0);                
-                #cv2.imwrite(os.path.join(surface_dir,'surface-heatmap'+surface_name+'.png'),dst)
+            #     #np.savetxt(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.txt'), s.output_data['gaze'])
+            #     #src2 = cv2.imread(os.path.join(surface_dir,'heatmap'+surface_name+'.png'))
+            #     #dst = cv2.addWeighted(src1, .9, src2, .1, 0.0);                
+            #     #cv2.imwrite(os.path.join(surface_dir,'surface-heatmap'+surface_name+'.png'),dst)
             
-            self.g_pool.capture.seek_to_frame(in_mark)
+            # self.g_pool.capture.seek_to_frame(in_mark)
             logger.info("Done exporting reference surface data.")
 
     def export_raw_data(self):
