@@ -91,9 +91,9 @@ if __name__ == '__main__':
 
 	source_dir = '/home/rafael/doutorado/data_doc/'
 	inner_paths = [
-		'004-Cristiane/2015-05-19',
+		# '004-Cristiane/2015-05-19',
 		'004-Cristiane/2015-05-27',
-		'005-Marco/2015-05-19',
+		# '005-Marco/2015-05-19',
 		'005-Marco/2015-05-20',
 		'006-Renan/2015-05-20',
 		'007-Gabriel/2015-05-20',
@@ -108,9 +108,9 @@ if __name__ == '__main__':
 
 	source_dir = '/home/rafael/doutorado/data_org/'
 	inner_paths = [
-		'P001/2015-05-19',
+		# 'P001/2015-05-19',
 		'P001/2015-05-27',
-		'P002/2015-05-19',
+		# 'P002/2015-05-19',
 		'P002/2015-05-20',
 		'P003/2015-05-20',
 		'P004/2015-05-20',

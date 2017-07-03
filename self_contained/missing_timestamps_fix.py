@@ -34,7 +34,7 @@ except:
             raise IOError, scapp_vlh_report_path+" not found."
     except IOError, e:
         print e, "using hardcoded paths"
-        output_path = "/home/rafael/documents/doutorado/data_doc/008-Thaiane/2015-05-19/004"
+        output_path = "/home/rafael/doutorado/data_doc/009-Rebeca/2015-05-25/002"
         scapp_timestamps_path = os.path.join(output_path, "scapp_output.timestamps")
         scapp_vlh_report_path = os.path.join(output_path, "scapp_report.data")
 
