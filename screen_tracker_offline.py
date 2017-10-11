@@ -41,7 +41,6 @@ from pyglui import ui
 from pyglui.cygl.utils import *
 from math import sqrt
 from square_marker_detect import draw_markers,m_marker_to_screen
-from calibration_routines.camera_intrinsics_estimation import load_camera_calibration
 
 from offline_surface_tracker import Offline_Surface_Tracker
 from screen_tracker import Screen_Tracker
@@ -139,7 +138,10 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             visited_list[frame_idx] = True
             self.cache.update(frame_idx,detected_screen)
             for s in self.surfaces:
-                s.update_cache(self.cache,camera_calibration=self.camera_calibration,min_marker_perimeter=self.min_marker_perimeter,min_id_confidence=self.min_id_confidence,idx=frame_idx)
+                s.update_cache(self.cache,
+                    min_marker_perimeter=self.min_marker_perimeter,
+                    min_id_confidence=self.min_id_confidence,
+                    idx=frame_idx)
             
         def next_unvisited_idx(frame_idx):
             try:
@@ -186,7 +188,7 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
         self.cacher_seek_idx = 0
         visited_list = [False for x in self.cache]
         # markers = []
-        cap = File_Source(Global_Container(),self.g_pool.capture.source_path,timestamps=self.g_pool.capture.timestamps)
+        cap = File_Source(Global_Container(),self.g_pool.capture.source_path)
 
         for _ in self.cache:
             next_frame = cap.get_frame_index()
