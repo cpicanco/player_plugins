@@ -46,9 +46,14 @@ Please, note it is a work in progress (2016-02-15).
 
 # install instructions
 
-No instalation is required. Just clone the repository as follows:
+Just clone the repositories as follows:
 
 ```
+# clone dependencies
+cd ~
+git clone https://github.com/cpicanco/pupil_plugins_shared
+
+# clone the repository
 cd <pupil-folder>/player_settings/
 git clone https://github.com/cpicanco/player_plugins.git plugins
 ```
