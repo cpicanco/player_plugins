@@ -831,8 +831,8 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             #     surface_path = os.path.join(surface_dir,'surface'+surface_name+'.png')
 
             #     # export a surface image from the center of the section for visualization purposes only
-            #     # self.export_section_image(surface_dir, s, in_mark, out_mark, surface_path)
 
+            #     self.export_section_image(surface_dir, s, in_mark, out_mark, surface_path)
             #     # lets create alternative versions of the surfaces *.pngs
             #     src1 = cv2.imread(surface_path)
             #     for g in s.output_data['gaze']:
@@ -842,13 +842,13 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             #         cv2.circle(src1, (int(c[0]),int(c[1])), 5, (0, 0, 255), -1)
             #     cv2.imwrite(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.png'),src1)
 
-            #     #np.savetxt(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.txt'), s.output_data['gaze'])
+            #     np.savetxt(os.path.join(surface_dir,'surface-gaze_cloud'+surface_name+'.txt'), s.output_data['gaze'])
             #     #src2 = cv2.imread(os.path.join(surface_dir,'heatmap'+surface_name+'.png'))
             #     #dst = cv2.addWeighted(src1, .9, src2, .1, 0.0);                
             #     #cv2.imwrite(os.path.join(surface_dir,'surface-heatmap'+surface_name+'.png'),dst)
             
             # self.g_pool.capture.seek_to_frame(in_mark)
-            logger.info("Done exporting reference surface data.")
+            # logger.info("Done exporting reference surface data.")
 
     def export_raw_data(self):
         """
