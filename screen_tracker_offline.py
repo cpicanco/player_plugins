@@ -370,16 +370,27 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
 
         self.menu.elements[:] = []
         self.menu.append(ui.Button('Close',close))
-        self.menu.append(ui.Slider('min_marker_perimeter',self,min=20,max=500,step=1,setter=set_min_marker_perimeter))
+        #self.menu.append(ui.Slider('min_marker_perimeter',self,min=20,max=500,step=1,setter=set_min_marker_perimeter))
         self.menu.append(ui.Info_Text('The offline screen tracker will look for a screen for each frame of the video. By default it uses surfaces defined in capture. You can change and add more surfaces here.'))
-        self.menu.append(ui.Selector('mode',self,setter=self.set_mode,label='Mode',selection=["Show Markers and Surfaces","Show marker IDs","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
+        # self.menu.append(ui.Selector('mode',self,setter=self.set_mode,label='Mode',selection=["Show Markers and Surfaces","Show marker IDs","Show Heatmaps","Show Gaze Cloud", "Show Kmeans Correction","Show Mean Correction","Show Metrics"] ))
+        self.menu.append(ui.Selector('mode',self,setter=self.set_mode,label='Mode',selection=["Show Markers and Surfaces"] ))
         
         if self.mode == 'Show Markers and Surfaces':
-            self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
-            self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
-            self.menu.append(ui.Button("Matrix segmentation", self.matrix_segmentation))
-            self.menu.append(ui.Button("Add M surfaces", self.add_matrix_surfaces))
-            self.menu.append(ui.Button("Update Cache", self.update_cache_hack))
+            self.menu.append(ui.Info_Text('Before starting, you must update the screen detector cache:'))
+            self.menu.append(ui.Button("Update Cache", self.update_cache_hack))            
+
+            self.menu.append(ui.Info_Text('Then you can add a screen. Move to a frame where the screen was detected (in blue) then press the add screen surface button.'))
+            self.menu.append(ui.Button("Add screen surface",lambda:self.add_surface('_')))
+                    
+            #self.menu.append(ui.Info_Text('To split the screen in two (left,right) surfaces 1) add two surfaces; 2) name them as "Left" and "Right"; 3) press Left Right segmentation'))
+            #self.menu.append(ui.Button("Left Right segmentation",self.screen_segmentation))
+            #self.menu.append(ui.Button("Matrix segmentation", self.matrix_segmentation))
+            #self.menu.append(ui.Button("Add M surfaces", self.add_matrix_surfaces))
+
+        self.menu.append(ui.Info_Text("Press the export button to export data from the current section."))
+        self.menu.append(ui.Button("Export", self.export_all_sections))
+
+
         if self.mode == 'Show Kmeans Correction':
             self.menu.append(ui.Info_Text('Gaze Correction requires a non segmented screen. It requires k equally distributed stimuli on the screen.'))
             self.menu.append(ui.Text_Input('gaze_correction_block_size',self,label='Block Size'))
@@ -397,20 +408,16 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             self.menu.append(ui.Selector('heatmap_colormap',self,label='Color Map',selection=['magma', 'inferno', 'plasma', 'viridis', 'jet']))
             self.menu.append(ui.Switch('heatmap_use_kdata',self,label='Use K Data'))
 
-        self.menu.append(ui.Info_Text('Select a section. To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
-        self.menu.append(ui.Button("(Re)-calculate gaze distributions",self.recalculate))
-        self.menu.append(ui.Info_Text('To use data from all sections to generate visualizations click the next button instead.'))
-        self.menu.append(ui.Button("(Re)-calculate",self.recalculate_all_sections))
-        self.menu.append(ui.Button("Add screen surface",lambda:self.add_surface('_')))
-        
-        self.menu.append(ui.Info_Text('Export gaze metrics. We recalculate metrics for each section when exporting all sections. Press the recalculate button before export the current selected section.'))
-        self.menu.append(ui.Info_Text("Press the export button or type 'e' to start the export for the current section."))
-        self.menu.append(ui.Button("Export all sections", self.export_all_sections))
+        # self.menu.append(ui.Info_Text('Select a section. To see heatmap, surface metrics, gaze cloud or gaze correction visualizations, click (re)-calculate gaze distributions. Set "X size" and "Y size" for each surface to see heatmap visualizations.'))
+        # self.menu.append(ui.Button("(Re)-calculate gaze distributions",self.recalculate))
+        # self.menu.append(ui.Info_Text('To use data from all sections to generate visualizations click the next button instead.'))
+        # self.menu.append(ui.Button("(Re)-calculate",self.recalculate_all_sections))
 
-        self.menu.append(ui.Info_Text('Requires segmentation plugin.'))
-        self.menu.append(ui.Button("Export all distances", self.export_all_distances))
-        self.menu.append(ui.Button("Precision Report", self.precision_report))
-        self.menu.append(ui.Button("Slice 1.5 - precision", self.export_all_precision))
+
+        # self.menu.append(ui.Info_Text('Requires segmentation plugin.'))
+        # self.menu.append(ui.Button("Export all distances", self.export_all_distances))
+        # self.menu.append(ui.Button("Precision Report", self.precision_report))
+        # self.menu.append(ui.Button("Slice 1.5 - precision", self.export_all_precision))
 
         for s in self.surfaces:
             idx = self.surfaces.index(s)
