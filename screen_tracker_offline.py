@@ -810,7 +810,8 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
                     return
 
             self.recalculate()
-            self.save_surface_statsics_to_file(slice(in_mark,out_mark), metrics_dir)
+            export_range = in_mark, out_mark
+            self.save_surface_statsics_to_file(export_range, metrics_dir)
 
             # surface_dir = os.path.join(metrics_dir,'surfaces')
 
