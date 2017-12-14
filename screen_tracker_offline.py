@@ -93,13 +93,9 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             logger.debug("No surface defs found. Please define using GUI.")
             self.surfaces = []
 
-    def init_gui(self):
-        self.menu = ui.Scrolling_Menu('Offline Screen Tracker')
-        self.g_pool.gui.append(self.menu)
-        self.update_gui_markers()
-
-        self.on_window_resize(glfwGetCurrentContext(),*glfwGetWindowSize(glfwGetCurrentContext()))
-
+    def init_ui(self):
+        super().init_ui()
+        self.menu.label = 'Offline Screen Tracker'
   
     def init_marker_cacher(self):
         pass
