@@ -1,6 +1,6 @@
 ```
   Pupil Player Third Party Plugins by cpicanco
-  Copyright (C) 2016 Rafael Picanço.
+  Copyright (C) 2017 Rafael Picanço.
 
   Pupil Player is part of Pupil, a Pupil Labs (C) software, see <http://pupil-labs.com>.
 
@@ -18,22 +18,17 @@ Run time plugins written to or modified from Pupil Player software (http://pupil
 
 # overview
 
-Please, note it is a work in progress (2016-02-15).
+Please, note it is a work in progress (2017-12-19).
 
 **Functional stuff as follows**:
 
 - Main (export, analytics, functionality)
   - export_images
-  - fixation_detector_patch
   - screen_offline_detector
-  - segmentation
-  - trim_marks_patch
   - vis_circle_on_contours
 
 - Dependencies
   - offline_reference_surface_patch
-  - quad_segmentation
-  - screen_detector
   - screen_detector_cacher
   - vcc_methods
 
@@ -41,19 +36,28 @@ Please, note it is a work in progress (2016-02-15).
   - display_recent_gaze_patch
   - filter_opencv_threshold
 
-**Not functional yet**
+**Not functional**
+  - segmentation
   - kmeans_gaze_correction
+  - trim_marks_patch
+  - fixation_detector_patch
 
 # install instructions
 
 Just clone the repositories as follows:
 
 ```
+# install git if necessary
+# sudo apt install git
+
 # clone dependencies
 cd ~
 git clone https://github.com/cpicanco/pupil_plugins_shared
 
 # clone the repository
-cd <pupil-folder>/player_settings/
+cd ~
+mkdir pupil_player_settings
+cd pupil_player_settings
 git clone https://github.com/cpicanco/player_plugins.git plugins
+
 ```
