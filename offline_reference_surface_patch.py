@@ -199,8 +199,8 @@ class Offline_Reference_Surface_Extended(Offline_Reference_Surface):
         x_size, y_size = self.real_world_size['x'], self.real_world_size['y']
 
         # create equidistant edges based on the user defined interval/size
-        x_bin = [x for x in xrange(0,int(x_size + 1), int(x_bin))]
-        y_bin = [y for y in xrange(0,int(y_size + 1), int(y_bin))]
+        x_bin = [x for x in range(0,int(x_size + 1), int(x_bin))]
+        y_bin = [y for y in range(0,int(y_size + 1), int(y_bin))]
 
         all_gaze = []
 
