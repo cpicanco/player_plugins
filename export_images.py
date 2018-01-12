@@ -25,10 +25,10 @@ class Export_Images(Plugin):
         - Export current frame image as png (as is).
 
     """
-    def __init__(self,g_pool):
+    def __init__(self, g_pool, target_surface_name= 'None'):
         # self.order = .5
         super(Export_Images, self).__init__(g_pool)
-        self.image_dir = os.path.join(self.g_pool.rec_dir,"export_images")
+        self.image_dir = os.path.join(self.g_pool.rec_dir,"exported_images")
         if os.path.isdir(self.image_dir):
             logger.info("Saving to:"+self.image_dir)
         else:
@@ -41,7 +41,7 @@ class Export_Images(Plugin):
                 self.alive = False
                 return
 
-        self.target_surface_name = 'None'
+        self.target_surface_name = target_surface_name
         self.menu = None
         self.frame = None
         self.surface_tracker = None
@@ -63,33 +63,28 @@ class Export_Images(Plugin):
             if self.surface_tracker.surfaces:
                 self.surface_names = [s.name for s in self.surface_tracker.surfaces]
 
-    def init_gui(self):
-        """
-        if the app allows a gui, you may initalize your part of it here.
-        """
-        self.menu = ui.Scrolling_Menu('Export Images')
-        self.g_pool.gui.append(self.menu)
+    def init_ui(self):
+        self.add_menu()
+        self.menu.label = 'Export Images'
         self.menu.elements[:] = []
-        self.menu.append(ui.Button('Close',self.unset_alive))
-        self.menu.append(ui.Info_Text('Export surface image in current frame as a .png file.\
-                                       Surface perspective is transformed from trapezoid to rectangular. Close and open this plugin to update the target surface list.'))
+        self.menu.append(ui.Button('Close', self.close))
+        self.menu.append(ui.Info_Text(
+            'Export surface image in current frame as a .png file.'+
+            ' Surface perspective is transformed from trapezoid to rectangular.'+
+            ' Close and open this plugin to update the target surface list.'))
         self.menu.append(ui.Button("Export Surfaces",self.export_selected_surface))
         self.menu.append(ui.Info_Text('Export current frame image.'))
         self.menu.append(ui.Button("Export Frame",self.export_current_frame))
-        self.menu.append(ui.Selector('target_surface_name',self,label='Target Surface',selection=['None']+self.surface_names))
-            
-    def deinit_gui(self):
-        if self.menu:
-            self.g_pool.gui.remove(self.menu)
-            self.menu = None
+        self.menu.append(ui.Selector('target_surface_name',
+            self,label='Target Surface',selection=['None']+self.surface_names))            
 
-    def update(self, frame, events):
-        self.frame = frame
+    def recent_events(self, events):
+        self.frame = events.get('frame')
 
     def export_current_frame(self):
         frame = self.frame.copy()
         if frame.img is not None:
-            cv2.imwrite(os.path.join(self.image_dir,'frame_'+str(frame.index)+'.png'),frame.img)
+            cv2.imwrite(os.path.join(self.image_dir,'frame_%05d'%frame.index+'.png'),frame.img)
             logger.info("Saved current frame image as .png file.")
         else:
             logger.error('No frame found.')
@@ -98,55 +93,62 @@ class Export_Images(Plugin):
         """
         source: offline_reference_surface.py
         export selected surface in the current frame
-        prototype note: surface selection functionality is not implemented
         """
-        # lets save out the current surface image found in video
-        if self.surface_tracker.surfaces:
-                for target_surface in self.surface_tracker.surfaces:
-                    if target_surface.name == self.target_surface_name:
-                        s = target_surface
-        else:
-            logger.error('No surfaces were found.')
+        if self.target_surface_name == 'None':
+            logger.error('Select a surface first.')
+            return
+
+        for target_surface in self.surface_tracker.surfaces:
+            if target_surface.name == self.target_surface_name:
+                surface = target_surface
+
+        if surface is None:
+            logger.error('Selected surface does not exist.')
             return
 
         frame = self.frame.copy()
-        if s.detected and frame.img is not None:
-            # here we get the verts of the surface quad in norm_coords
-            mapped_space_one = np.array(((0,0),(1,0),(1,1),(0,1)),dtype=np.float32).reshape(-1,1,2)
-            screen_space = cv2.perspectiveTransform(mapped_space_one,s.m_to_screen).reshape(-1,2)
+        if surface.detected and frame.img is not None:
+            # get the verts of the surface quad in norm_coords
+            mapped_space_one = np.array(
+                ((0,0),(1,0),(1,1),(0,1)),dtype=np.float32).reshape(-1,1,2)
+            screen_space = cv2.perspectiveTransform(
+                mapped_space_one,surface.m_to_screen).reshape(-1,2)
             
-            # now we convert to image pixel coords
+            # convert to image pixel coords
             screen_space[:,1] = 1-screen_space[:,1]
             screen_space[:,1] *= frame.img.shape[0]
             screen_space[:,0] *= frame.img.shape[1]
-            s_0,s_1 = s.real_world_size['x'], s.real_world_size['y'] 
+            s_0,s_1 = surface.real_world_size['x'], surface.real_world_size['y'] 
             
-            # now we need to flip vertically again by setting the mapped_space verts accordingly.
+            # flip vertically again setting mapped_space verts accordingly
             mapped_space_scaled = np.array(((0,s_1),(s_0,s_1),(s_0,0),(0,0)),dtype=np.float32)
             M = cv2.getPerspectiveTransform(screen_space,mapped_space_scaled)
             
-            # here we do the actual perspactive transform of the image.
-            srf_in_video = cv2.warpPerspective(frame.img,M, (int(s.real_world_size['x']),int(s.real_world_size['y'])) )
-            file_name = os.path.join(self.image_dir,'frame_'+str(frame.index)+'_surface'+'_'+s.name.replace('/','')+'_'+s.uid+'.png')
-            cv2.imwrite(file_name,srf_in_video)
+            # perspective transformation
+            srf_in_video = cv2.warpPerspective(
+                frame.img,M, (int(surface.real_world_size['x']),
+                              int(surface.real_world_size['y'])))
+
+            # save to file
+            file_name = '_'.join([
+                'frame',
+                '%05d'%frame.index,
+                'surface',
+                surface.name.replace('/',''),
+                surface.uid,
+                '.png'])
+            cv2.imwrite(os.path.join(self.image_dir, file_name), srf_in_video)
             logger.info("Saved surface image as .png")
         else:
-            logger.info("'%s' is not currently visible. Seek to appropriate frame and repeat this command."%s.name)
+            logger.info(
+                'Surface "%s" is not currently visible.'%surface.name+
+                ' Seek to appropriate frame and repeat this command.')
+    
+    def get_init_dict(self):
+        return {'target_surface_name': self.target_surface_name}
 
-
-    ## if you want a session persistent plugin implement this function:
-    # def get_init_dict(self):
-    #     raise NotImplementedError()
-    #     # d = {}
-    #     # # add all aguments of your plugin init fn with paramter names as name field
-    #     # # do not include g_pool here.
-    #     # return d
-    def unset_alive(self):
+    def close(self):
         self.alive = False
 
-    def cleanup(self):
-        """ called when the plugin gets terminated.
-        This happens either voluntarily or forced.
-        if you have a GUI or glfw window destroy it here.
-        """
-        self.deinit_gui()
+    def deinit_ui(self):
+        self.remove_menu()
