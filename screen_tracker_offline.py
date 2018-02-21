@@ -111,7 +111,7 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
 
     def update_cache_hack(self):
         from screen_detector_cacher import Global_Container
-        from video_capture import File_Source, EndofVideoFileError, FileSeekError
+        from video_capture import File_Source, EndofVideoError, FileSeekError
         from screen_detector_methods import detect_screens
         
         def put_in_cache(frame_idx,detected_screen):
@@ -160,7 +160,7 @@ class Screen_Tracker_Offline(Offline_Surface_Tracker,Screen_Tracker):
             
             try:
                 frame = cap.get_frame()
-            except EndofVideoFileError:
+            except EndofVideoError:
                 put_in_cache(next_frame,[]) # we cannot look at the frame, report no detection
                 return
 
